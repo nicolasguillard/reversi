@@ -332,6 +332,19 @@ const logic = {
 				position: { i, j } // Stocker la position du coup
 			});
 			state.currentMoveIndex = state.moves.length - 1;
+			// Retirer tous les indicateurs de dernier coup
+			for (let row = 0; row < 8; row++) {
+				for (let col = 0; col < 8; col++) {
+					let indicator = squares[row][col].querySelector('.last-move-indicator');
+					if (indicator) {
+						indicator.remove();
+					}
+				}
+			}
+			// Ajouter l'indicateur sur la case actuelle
+			let indicator = document.createElement('div');
+			indicator.classList.add('last-move-indicator');
+			squares[i][j].appendChild(indicator);
 			this.setSquare(i, j, state.turn);
 			this.react(state.turn, move);
 			this.switchTurn();
