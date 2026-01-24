@@ -92,7 +92,7 @@ h1 {
 
 .sequence-option .label {
 	margin-bottom: 5px;
-	font-size: 1rem;
+	font-size: 1em;
 }
 
 #gameSequence {
@@ -785,6 +785,7 @@ body.light .row-label {
 	background-color: #004085;
 }
 
+#undo:disabled,
 #previous:disabled,
 #next:disabled {
 	opacity: 0.5;

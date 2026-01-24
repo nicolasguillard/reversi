@@ -90,6 +90,7 @@ function initGrid() {
 			element.classList.add("square");
 			element.addEventListener("click", () => {
 				if (state.cpu === state.turn) return;
+				if (isReplayingSequence) return;
 				logic.clickHandler(i, j);
 			});
 			grid.appendChild(element);
@@ -147,6 +148,8 @@ function initGrid() {
 		}, 500);
 	});
 	let stop = () => {
+		isReplayingSequence = false;
+		document.getElementById("undo").disabled = false;
 		document.body.classList.add("fade");
 		setTimeout(() => {
 			document.body.classList.add("setup-active");
@@ -640,12 +643,6 @@ const logic = {
 				delay += delayIncrement; // Délai entre chaque coup
 			}
 		}
-		
-		// Réactiver le bouton undo après la fin du replay
-		setTimeout(() => {
-			isReplayingSequence = false;
-			document.getElementById("undo").disabled = false;
-		}, delay);
 	},
 };
 
