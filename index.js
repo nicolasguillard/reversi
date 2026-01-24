@@ -137,6 +137,36 @@ function initGrid() {
 		document.getElementById("setupdisk").style.backgroundColor =
 			playerId.value !== "1" ? "black" : "white";
 	});
+	document.getElementById("gameSequence").addEventListener("blur", function() {
+		// Normaliser le format de la séquence
+		let sequence = this.value.trim();
+		if (sequence) {
+			// Convertir en majuscules et extraire les coups
+			sequence = sequence.toUpperCase().replace(/[,;]/g, ' ');
+			
+			// Si la séquence est continue sans espaces (ex: "F5F6E6F4"), séparer les coups
+			if (!sequence.includes(' ')) {
+				// Extraire les coups de 2 ou 3 caractères
+				let moves = [];
+				let i = 0;
+				while (i < sequence.length) {
+					// Vérifier si c'est un coup valide (lettre + chiffre)
+					if (i + 1 < sequence.length && 
+						sequence[i].match(/[A-H]/) && 
+						sequence[i + 1].match(/[1-8]/)) {
+						moves.push(sequence[i] + sequence[i + 1]);
+						i += 2;
+					} else {
+						i++;
+					}
+				}
+				this.value = moves.join(' ');
+			} else {
+				// Nettoyer les espaces multiples
+				this.value = sequence.split(/\s+/).filter(m => m.length >= 2).join(' ');
+			}
+		}
+	});
 	document.getElementById("play").addEventListener("click", () => {
 		document.body.classList.add("fade");
 		setTimeout(() => {
