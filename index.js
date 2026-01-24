@@ -228,7 +228,13 @@ function updateMoveHistory() {
 			let move1 = state.moves[i];
 			let moveSpan = document.createElement("span");
 			moveSpan.classList.add("move-item", "move-black");
-			moveSpan.textContent = alphabets[move1.position.j] + (move1.position.i + 1);
+			// Vérifier si c'est un coup passé
+			if (move1.position.i === -1 && move1.position.j === -1) {
+				moveSpan.classList.add("move-pass");
+				moveSpan.textContent = "Z0";
+			} else {
+				moveSpan.textContent = alphabets[move1.position.j] + (move1.position.i + 1);
+			}
 			line.appendChild(moveSpan);
 		}
 		
@@ -237,7 +243,13 @@ function updateMoveHistory() {
 			let move2 = state.moves[i + 1];
 			let moveSpan = document.createElement("span");
 			moveSpan.classList.add("move-item", "move-white");
-			moveSpan.textContent = alphabets[move2.position.j] + (move2.position.i + 1);
+			// Vérifier si c'est un coup passé
+			if (move2.position.i === -1 && move2.position.j === -1) {
+				moveSpan.classList.add("move-pass");
+				moveSpan.textContent = "Z0";
+			} else {
+				moveSpan.textContent = alphabets[move2.position.j] + (move2.position.i + 1);
+			}
 			line.appendChild(moveSpan);
 		}
 		
@@ -446,6 +458,15 @@ const logic = {
 				this.endgame();
 				return false;
 			}
+			// Enregistrer un coup passé (Z0) dans l'historique
+			let current = JSON.parse(JSON.stringify(state.grid));
+			state.moves.push({
+				grid: current,
+				turn: state.turn,
+				position: { i: -1, j: -1 } // Position spéciale pour indiquer un coup passé
+			});
+			state.currentMoveIndex = state.moves.length - 1;
+			updateMoveHistory();
 			state.wasLastTurnSkipped = true;
 			this.switchTurn();
 		} else {
