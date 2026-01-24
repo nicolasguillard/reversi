@@ -85,6 +85,62 @@ h1 {
 	padding: 5px;
 }
 
+.sequence-option {
+	flex-direction: column;
+	align-items: flex-start;
+}
+
+.sequence-option .label {
+	margin-bottom: 5px;
+	font-size: 1rem;
+}
+
+#gameSequence {
+	width: 100%;
+	height: 150px;
+	font-family: monospace;
+	font-size: 0.9rem;
+	padding: 8px;
+	border: 2px solid #008000;
+	border-radius: 5px;
+	background-color: #1a1a1a;
+	color: #fff;
+	resize: vertical;
+}
+
+.light #gameSequence {
+	background-color: #f5f5f5;
+	color: #000;
+	border-color: #008000;
+}
+
+#gameSequence:focus {
+	outline: none;
+	border-color: #059805;
+}
+
+#replayDelay {
+	font-family: monospace;
+	font-size: 1rem;
+	padding: 5px 8px;
+	border: 2px solid #008000;
+	border-radius: 5px;
+	background-color: #1a1a1a;
+	color: #fff;
+	width: 100px;
+}
+
+.light #replayDelay {
+	background-color: #f5f5f5;
+	color: #000;
+	border-color: #008000;
+}
+
+#replayDelay:focus {
+	outline: none;
+	border-color: #059805;
+}
+
 .modal {
 	display: flex;
 	background-color: #353535;
@@ -354,8 +410,157 @@ h1 {
 	width: 80vmin;
 	height: 80vmin;
 	grid-template: repeat(8, 1fr) / repeat(8, 1fr);
-	margin: 15px 0;
+	margin: 40px 0;
 	position: relative;
+}
+
+#game-container {
+	display: flex;
+	flex-direction: row;
+	gap: 20px;
+	align-items: flex-start;
+	justify-content: center;
+}
+
+#move-history {
+	width: 200px;
+	max-height: 80vmin;
+	overflow-y: auto;
+	background-color: #1a1a1a;
+	border: 2px solid #008000;
+	border-radius: 8px;
+	padding: 10px;
+	margin-top: 40px;
+}
+
+.light #move-history {
+	background-color: #f5f5f5;
+	color: #000;
+}
+
+#move-history h3 {
+	font-size: 1.2em;
+	margin-bottom: 10px;
+	text-align: center;
+	color: #008000;
+}
+
+#history-content {
+	font-family: monospace;
+	font-size: 0.9em;
+	line-height: 1.8;
+}
+
+.history-line {
+	display: flex;
+	gap: 8px;
+	margin-bottom: 4px;
+}
+
+.move-number {
+	font-weight: bold;
+	color: #008000;
+	min-width: 25px;
+}
+
+.move-item {
+	flex: 1;
+	padding: 2px 4px;
+	border-radius: 3px;
+}
+
+.move-black {
+	background-color: #333;
+	color: #fff;
+}
+
+.light .move-black {
+	background-color: #ddd;
+	color: #000;
+}
+
+.move-white {
+	background-color: #555;
+	color: #fff;
+}
+
+.light .move-white {
+	background-color: #bbb;
+	color: #000;
+}
+
+#col-labels {
+	display: grid;
+	grid-template-columns: repeat(8, 1fr);
+	width: 100%;
+	height: 3vmin;
+	gap: 0;
+	position: absolute;
+	top: -3vmin;
+	left: 0;
+	pointer-events: none;
+	z-index: 10;
+}
+
+.col-label {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-family: monospace;
+	font-size: 1.5vmin;
+	font-weight: bold;
+	color: white;
+}
+
+body.light .col-label {
+	color: black;
+}
+
+#row-labels {
+	display: grid;
+	grid-template-rows: repeat(8, 1fr);
+	width: 3vmin;
+	height: 100%;
+	gap: 0;
+	position: absolute;
+	left: -3vmin;
+	top: 0;
+	pointer-events: none;
+	z-index: 10;
+}
+
+.row-label {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-family: monospace;
+	font-size: 1.5vmin;
+	font-weight: bold;
+	color: white;
+}
+
+body.light .row-label {
+	color: black;
+}
+
+@media screen and (max-aspect-ratio: 3/5) {
+	#col-labels {
+		height: 3.5vmin;
+		top: -3.5vmin;
+	}
+	
+	.col-label {
+		font-size: 2vmin;
+	}
+	
+	#row-labels {
+		width: 3.5vmin;
+		left: -3.5vmin;
+	}
+	
+	.row-label {
+		font-size: 2vmin;
+	}
 }
 
 .game-active #grid::after {
@@ -384,6 +589,13 @@ h1 {
 	}
 	#state {
 		font-size: 3vw;
+	}
+	#game-container {
+		flex-direction: column;
+		align-items: center;
+	}
+	#move-history {
+		display: none;
 	}
 }
 
@@ -537,4 +749,45 @@ h1 {
 	opacity: 0.4;
 	transform: scaleY(1);
 	background-color: white;
+}
+
+#navigation-btns {
+	display: flex;
+	flex-direction: row;
+	gap: 10px;
+	justify-content: center;
+	align-items: center;
+	margin-top: 10px;
+}
+
+#previous {
+	background-color: #dc3545;
+}
+
+#previous:hover {
+	background-color: #c82333;
+}
+
+#previous:active {
+	background-color: #bd2130;
+}
+
+#next {
+	background-color: #007bff;
+}
+
+#next:hover {
+	background-color: #0056b3;
+}
+
+#next:active {
+	background-color: #004085;
+}
+
+#previous:disabled,
+#next:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+	box-shadow: none;
+	pointer-events: none;
 }

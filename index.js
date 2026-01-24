@@ -44,6 +44,7 @@ let state = {
 	p2: 2,
 	wasLastTurnSkipped: false,
 	cpu: 0,
+	currentMoveIndex: -1,
 };
 
 function setTheme(dark = true) {
@@ -60,6 +61,27 @@ function setTheme(dark = true) {
 
 function initGrid() {
 	let alphabets = ["A", "B", "C", "D", "E", "F", "G", "H"];
+	
+	// Créer les étiquettes de colonnes (A-H) en haut
+	let colLabels = document.createElement("div");
+	colLabels.id = "col-labels";
+	for (let j = 0; j < 8; j++) {
+		let label = document.createElement("div");
+		label.classList.add("col-label");
+		label.textContent = alphabets[j];
+		colLabels.appendChild(label);
+	}
+	
+	// Créer les étiquettes de lignes (1-8) à gauche
+	let rowLabels = document.createElement("div");
+	rowLabels.id = "row-labels";
+	for (let i = 1; i <= 8; i++) {
+		let label = document.createElement("div");
+		label.classList.add("row-label");
+		label.textContent = i;
+		rowLabels.appendChild(label);
+	}
+	
 	for (let i = 0; i < 8; i++) {
 		for (let j = 0; j < 8; j++) {
 			let element = document.createElement("div");
@@ -73,8 +95,18 @@ function initGrid() {
 			squares[i].push(element);
 		}
 	}
+	
+	// Ajouter les étiquettes à l'intérieur du grid
+	grid.appendChild(colLabels);
+	grid.appendChild(rowLabels);
 	document.getElementById("undo").addEventListener("click", () => {
 		logic.undo();
+	});
+	document.getElementById("previous").addEventListener("click", () => {
+		logic.previous();
+	});
+	document.getElementById("next").addEventListener("click", () => {
+		logic.next();
 	});
 	playerNumber.addEventListener("input", function () {
 		if (this.value === "2") {
@@ -100,7 +132,11 @@ function initGrid() {
 			} else {
 				cpu = playerId.value === "1" ? 1 : 2;
 			}
+			let sequence = document.getElementById("gameSequence").value.trim();
 			logic.setup(cpu);
+			if (sequence) {
+				logic.replaySequence(sequence);
+			}
 		}, 500);
 	});
 	let stop = () => {
@@ -160,6 +196,72 @@ function checkdom() {
 	grid.classList.remove("turn-" + (state.turn === 2 ? "Black" : "White"));
 }
 
+function updateMoveHistory() {
+	let historyContent = document.getElementById("history-content");
+	historyContent.innerHTML = "";
+	
+	let alphabets = ["A", "B", "C", "D", "E", "F", "G", "H"];
+	
+	// Parcourir l'historique des coups par paires
+	for (let i = 0; i < state.moves.length; i += 2) {
+		let line = document.createElement("div");
+		line.classList.add("history-line");
+		
+		// Numéro du coup (commence à 1)
+		let moveNum = document.createElement("span");
+		moveNum.classList.add("move-number");
+		moveNum.textContent = Math.floor(i / 2) + 1 + ".";
+		line.appendChild(moveNum);
+		
+		// Premier coup (Noir)
+		if (i < state.moves.length && state.moves[i].position) {
+			let move1 = state.moves[i];
+			let moveSpan = document.createElement("span");
+			moveSpan.classList.add("move-item", "move-black");
+			moveSpan.textContent = alphabets[move1.position.j] + (move1.position.i + 1);
+			line.appendChild(moveSpan);
+		}
+		
+		// Deuxième coup (Blanc)
+		if (i + 1 < state.moves.length && state.moves[i + 1].position) {
+			let move2 = state.moves[i + 1];
+			let moveSpan = document.createElement("span");
+			moveSpan.classList.add("move-item", "move-white");
+			moveSpan.textContent = alphabets[move2.position.j] + (move2.position.i + 1);
+			line.appendChild(moveSpan);
+		}
+		
+		historyContent.appendChild(line);
+	}
+	
+	// Faire défiler jusqu'à la fin
+	historyContent.parentElement.scrollTop = historyContent.parentElement.scrollHeight;
+}
+
+function getInitialGrid() {
+	let grid = new Array(8);
+	for (let i = 0; i < 8; i++) {
+		grid[i] = new Array(8).fill(0);
+	}
+	grid[3][3] = 2;
+	grid[3][4] = 1;
+	grid[4][3] = 1;
+	grid[4][4] = 2;
+	return grid;
+}
+
+function findMovePosition(prevGrid, currentGrid) {
+	// Trouver la différence entre deux grilles pour identifier le coup joué
+	for (let i = 0; i < 8; i++) {
+		for (let j = 0; j < 8; j++) {
+			if (prevGrid[i][j] === 0 && currentGrid[i][j] !== 0) {
+				return { i, j };
+			}
+		}
+	}
+	return null;
+}
+
 const logic = {
 	setup(cpu = 0) {
 		state = {
@@ -175,6 +277,7 @@ const logic = {
 			p1: 0,
 			p2: 0,
 			cpu: cpu,
+			currentMoveIndex: -1,
 		};
 		for (let i = 0; i < 8; i++) {
 			state.grid[i] = new Array(8).fill(0);
@@ -188,6 +291,8 @@ const logic = {
 		turnDiv.innerText = "Black's Turn";
 		grid.classList.add("turn-" + (state.turn === 1 ? "Black" : "White"));
 		grid.classList.remove("turn-" + (state.turn === 2 ? "Black" : "White"));
+		this.updateNavigationButtons();
+		updateMoveHistory();
 		if (cpu === 1) {
 			this.cpu();
 		}
@@ -207,14 +312,21 @@ const logic = {
 			let move = state.validMoves[i * 10 + j];
 			if (typeof move === "undefined") return false;
 			let current = JSON.parse(JSON.stringify(state.grid));
+			// Supprimer les coups futurs si on rejoue depuis le passé
+			if (state.currentMoveIndex < state.moves.length - 1) {
+				state.moves = state.moves.slice(0, state.currentMoveIndex + 1);
+			}
 			state.moves.push({
 				grid: current,
 				turn: state.turn,
+				position: { i, j } // Stocker la position du coup
 			});
+			state.currentMoveIndex = state.moves.length - 1;
 			this.setSquare(i, j, state.turn);
 			this.react(state.turn, move);
 			this.switchTurn();
 			this.updateScore();
+			updateMoveHistory();
 		}
 	},
 	updateScore() {
@@ -232,6 +344,7 @@ const logic = {
 		turnDiv.innerText = state.turn === 1 ? "Black's Turn" : "White's Turn";
 		grid.classList.add("turn-" + (state.turn === 1 ? "Black" : "White"));
 		grid.classList.remove("turn-" + (state.turn === 2 ? "Black" : "White"));
+		this.updateNavigationButtons();
 	},
 	undo() {
 		if (state.moves.length === 0) return;
@@ -253,6 +366,8 @@ const logic = {
 		state.turn = r.turn;
 		checkdom();
 		this.validMoves();
+		this.updateNavigationButtons();
+		updateMoveHistory();
 		localStorage.setItem("lastGame", JSON.stringify(state));
 	},
 	endgame() {
@@ -436,6 +551,88 @@ const logic = {
 			}
 			this.inputHandler(Math.floor(move / 10), move % 10);
 		}, 1500);
+	},
+	previous() {
+		if (state.currentMoveIndex < 0) return;
+		let r = state.moves[state.currentMoveIndex];
+		state.grid = JSON.parse(JSON.stringify(r.grid));
+		state.turn = r.turn;
+		state.currentMoveIndex--;
+		checkdom();
+		this.validMoves();
+		this.updateNavigationButtons();
+		updateMoveHistory();
+	},
+	next() {
+		if (state.currentMoveIndex >= state.moves.length - 1) return;
+		state.currentMoveIndex++;
+		let nextMove = state.moves[state.currentMoveIndex];
+		// Appliquer le coup suivant
+		state.grid = JSON.parse(JSON.stringify(nextMove.grid));
+		state.turn = nextMove.turn === 1 ? 2 : 1;
+		// Trouver et appliquer le coup qui a été joué
+		for (let i = 0; i < 8; i++) {
+			for (let j = 0; j < 8; j++) {
+				if (state.currentMoveIndex + 1 < state.moves.length) {
+					let futureGrid = state.moves[state.currentMoveIndex + 1].grid;
+					if (nextMove.grid[i][j] === 0 && futureGrid[i][j] !== 0) {
+						this.setSquare(i, j, futureGrid[i][j]);
+					}
+				}
+			}
+		}
+		state.grid = state.currentMoveIndex + 1 < state.moves.length 
+			? JSON.parse(JSON.stringify(state.moves[state.currentMoveIndex + 1].grid))
+			: state.grid;
+		state.turn = state.currentMoveIndex + 1 < state.moves.length
+			? state.moves[state.currentMoveIndex + 1].turn
+			: state.turn;
+		checkdom();
+		this.validMoves();
+		this.updateNavigationButtons();
+		updateMoveHistory();
+	},
+	updateNavigationButtons() {
+		let prevBtn = document.getElementById("previous");
+		let nextBtn = document.getElementById("next");
+		
+		// Désactiver pendant le tour du CPU
+		let isCpuTurn = state.cpu !== 0 && state.cpu === state.turn;
+		
+		// Previous: désactivé si au début de l'historique ou tour CPU
+		prevBtn.disabled = state.currentMoveIndex < 0 || isCpuTurn;
+		
+		// Next: désactivé si à la fin de l'historique ou tour CPU
+		nextBtn.disabled = state.currentMoveIndex >= state.moves.length - 1 || isCpuTurn;
+	},
+	replaySequence(sequence) {
+		// Décoder la séquence (format: "D3 C4 E3" ou "D3,C4,E3" ou "D3C4E3")
+		let moves = sequence.toUpperCase()
+			.replace(/[,;]/g, ' ') // Remplacer virgules et points-virgules par espaces
+			.split(/\s+/) // Diviser par espaces
+			.filter(m => m.length >= 2); // Filtrer les éléments vides
+		
+		let alphabets = ["A", "B", "C", "D", "E", "F", "G", "H"];
+		let delay = 0;
+		// Récupérer le délai configuré par l'utilisateur
+		let delayIncrement = parseInt(document.getElementById("replayDelay").value) || 600;
+		
+		for (let moveStr of moves) {
+			// Parser le coup (ex: "D3" -> colonne D, ligne 3)
+			let col = moveStr.charAt(0);
+			let row = parseInt(moveStr.substring(1));
+			
+			let j = alphabets.indexOf(col);
+			let i = row - 1;
+			
+			// Vérifier la validité
+			if (j >= 0 && j < 8 && i >= 0 && i < 8) {
+				setTimeout(() => {
+					this.inputHandler(i, j);
+				}, delay);
+				delay += delayIncrement; // Délai entre chaque coup
+			}
+		}
 	},
 };
 
