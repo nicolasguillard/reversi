@@ -16,6 +16,7 @@ let themebtn = document.getElementById("theme");
 backdrop.style.display = "none";
 
 let darkmode = true;
+let isReplayingSequence = false;
 
 if (localStorage.getItem("theme")) {
 	darkmode = localStorage.getItem("theme") === "dark" ? true : false;
@@ -127,15 +128,21 @@ function initGrid() {
 			document.body.classList.add("game-active");
 			document.body.classList.remove("fade");
 			let cpu;
-			if (playerNumber.value === "2") {
+			let sequence = document.getElementById("gameSequence").value.trim();
+			// Si une séquence est fournie, forcer le mode deux joueurs
+			if (sequence || playerNumber.value === "2") {
 				cpu = 0;
 			} else {
 				cpu = playerId.value === "1" ? 1 : 2;
 			}
-			let sequence = document.getElementById("gameSequence").value.trim();
 			logic.setup(cpu);
 			if (sequence) {
+				isReplayingSequence = true;
+				document.getElementById("undo").disabled = true;
 				logic.replaySequence(sequence);
+			} else {
+				isReplayingSequence = false;
+				document.getElementById("undo").disabled = false;
 			}
 		}, 500);
 	});
@@ -633,6 +640,12 @@ const logic = {
 				delay += delayIncrement; // Délai entre chaque coup
 			}
 		}
+		
+		// Réactiver le bouton undo après la fin du replay
+		setTimeout(() => {
+			isReplayingSequence = false;
+			document.getElementById("undo").disabled = false;
+		}, delay);
 	},
 };
 

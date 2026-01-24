@@ -464,9 +464,10 @@ h1 {
 }
 
 .move-item {
-	flex: 1;
+	flex: 0 0 50px;
 	padding: 2px 4px;
 	border-radius: 3px;
+	text-align: center;
 }
 
 .move-black {
