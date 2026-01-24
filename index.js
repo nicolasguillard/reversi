@@ -17,6 +17,9 @@ backdrop.style.display = "none";
 
 let darkmode = true;
 let isReplayingSequence = false;
+let replayTimeouts = [];
+let currentSequence = "";
+let isPaused = false;
 
 if (localStorage.getItem("theme")) {
 	darkmode = localStorage.getItem("theme") === "dark" ? true : false;
@@ -104,11 +107,23 @@ function initGrid() {
 	document.getElementById("undo").addEventListener("click", () => {
 		logic.undo();
 	});
+	document.getElementById("first").addEventListener("click", () => {
+		logic.goToFirst();
+	});
+	document.getElementById("play-replay").addEventListener("click", () => {
+		logic.playReplay();
+	});
+	document.getElementById("pause-replay").addEventListener("click", () => {
+		logic.pauseReplay();
+	});
 	document.getElementById("previous").addEventListener("click", () => {
 		logic.previous();
 	});
 	document.getElementById("next").addEventListener("click", () => {
 		logic.next();
+	});
+	document.getElementById("last").addEventListener("click", () => {
+		logic.goToLast();
 	});
 	playerNumber.addEventListener("input", function () {
 		if (this.value === "2") {
@@ -138,18 +153,24 @@ function initGrid() {
 			}
 			logic.setup(cpu);
 			if (sequence) {
+				currentSequence = sequence;
 				isReplayingSequence = true;
 				document.getElementById("undo").disabled = true;
-				logic.replaySequence(sequence);
+				document.getElementById("navigation-btns").style.display = "flex";
+				document.getElementById("play-replay").style.display = "inline-block";
+				document.getElementById("pause-replay").style.display = "none";
+				logic.prepareSequence(sequence);
 			} else {
 				isReplayingSequence = false;
 				document.getElementById("undo").disabled = false;
+				document.getElementById("navigation-btns").style.display = "none";
 			}
 		}, 500);
 	});
 	let stop = () => {
 		isReplayingSequence = false;
 		document.getElementById("undo").disabled = false;
+		document.getElementById("navigation-btns").style.display = "none";
 		document.body.classList.add("fade");
 		setTimeout(() => {
 			document.body.classList.add("setup-active");
@@ -235,6 +256,14 @@ function updateMoveHistory() {
 			} else {
 				moveSpan.textContent = alphabets[move1.position.j] + (move1.position.i + 1);
 			}
+			// Marquer comme coup futur si nécessaire
+			if (i > state.currentMoveIndex) {
+				moveSpan.classList.add("future-move");
+			}
+			// Ajouter le clic pour naviguer vers ce coup
+			moveSpan.addEventListener("click", () => {
+				logic.navigateToMove(i);
+			});
 			line.appendChild(moveSpan);
 		}
 		
@@ -250,41 +279,22 @@ function updateMoveHistory() {
 			} else {
 				moveSpan.textContent = alphabets[move2.position.j] + (move2.position.i + 1);
 			}
+			// Marquer comme coup futur si nécessaire
+			if (i + 1 > state.currentMoveIndex) {
+				moveSpan.classList.add("future-move");
+			}
+			// Ajouter le clic pour naviguer vers ce coup
+			moveSpan.addEventListener("click", () => {
+				logic.navigateToMove(i + 1);
+			});
 			line.appendChild(moveSpan);
 		}
 		
 		historyContent.appendChild(line);
 	}
-	
-	// Faire défiler jusqu'à la fin
-	historyContent.parentElement.scrollTop = historyContent.parentElement.scrollHeight;
 }
 
-function getInitialGrid() {
-	let grid = new Array(8);
-	for (let i = 0; i < 8; i++) {
-		grid[i] = new Array(8).fill(0);
-	}
-	grid[3][3] = 2;
-	grid[3][4] = 1;
-	grid[4][3] = 1;
-	grid[4][4] = 2;
-	return grid;
-}
-
-function findMovePosition(prevGrid, currentGrid) {
-	// Trouver la différence entre deux grilles pour identifier le coup joué
-	for (let i = 0; i < 8; i++) {
-		for (let j = 0; j < 8; j++) {
-			if (prevGrid[i][j] === 0 && currentGrid[i][j] !== 0) {
-				return { i, j };
-			}
-		}
-	}
-	return null;
-}
-
-const logic = {
+let logic = {
 	setup(cpu = 0) {
 		state = {
 			grid: new Array(8),
@@ -334,8 +344,8 @@ const logic = {
 			let move = state.validMoves[i * 10 + j];
 			if (typeof move === "undefined") return false;
 			let current = JSON.parse(JSON.stringify(state.grid));
-			// Supprimer les coups futurs si on rejoue depuis le passé
-			if (state.currentMoveIndex < state.moves.length - 1) {
+			// Supprimer les coups futurs si on rejoue depuis le passé (mais pas pendant un replay de séquence)
+			if (state.currentMoveIndex < state.moves.length - 1 && !isReplayingSequence) {
 				state.moves = state.moves.slice(0, state.currentMoveIndex + 1);
 			}
 			state.moves.push({
@@ -415,7 +425,10 @@ const logic = {
 		if (state.p1 === state.p2) {
 			turnDiv.innerText = winner.innerText = "It's a Tie!";
 		}
-		showModal(victory);
+		// Ne pas afficher le modal victory si une séquence est rejouée
+		if (!isReplayingSequence) {
+			showModal(victory);
+		}
 		localStorage.removeItem("lastGame");
 	},
 	validMoves() {
@@ -649,34 +662,284 @@ const logic = {
 		// Next: désactivé si à la fin de l'historique ou tour CPU
 		nextBtn.disabled = state.currentMoveIndex >= state.moves.length - 1 || isCpuTurn;
 	},
+	navigateToMove(moveIndex) {
+		// Naviguer vers un coup spécifique en cliquant dans l'historique
+		if (moveIndex < 0 || moveIndex >= state.moves.length) return;
+		
+		state.currentMoveIndex = moveIndex;
+		let move = state.moves[moveIndex];
+		state.grid = JSON.parse(JSON.stringify(move.grid));
+		state.turn = move.turn;
+		
+		// Appliquer le coup à la position
+		if (move.position.i !== -1 && move.position.j !== -1) {
+			// Trouver l'état après le coup en regardant le coup suivant
+			if (moveIndex + 1 < state.moves.length) {
+				state.grid = JSON.parse(JSON.stringify(state.moves[moveIndex + 1].grid));
+				state.turn = state.moves[moveIndex + 1].turn;
+			} else {
+				// C'est le dernier coup, on doit le jouer manuellement
+				let moveSet = this.check(move.position.i, move.position.j, move.turn);
+				this.setSquare(move.position.i, move.position.j, move.turn);
+				this.react(move.turn, moveSet);
+				state.turn = move.turn === 1 ? 2 : 1;
+			}
+		} else {
+			// Coup passé
+			if (moveIndex + 1 < state.moves.length) {
+				state.grid = JSON.parse(JSON.stringify(state.moves[moveIndex + 1].grid));
+				state.turn = state.moves[moveIndex + 1].turn;
+			} else {
+				// Dernier coup et c'est un passage
+				state.turn = move.turn === 1 ? 2 : 1;
+			}
+		}
+		
+		checkdom();
+		this.validMoves();
+		this.updateNavigationButtons();
+		updateMoveHistory();
+	},
 	replaySequence(sequence) {
-		// Décoder la séquence (format: "D3 C4 E3" ou "D3,C4,E3" ou "D3C4E3")
+		// Annuler tous les timeouts précédents
+		replayTimeouts.forEach(timeout => clearTimeout(timeout));
+		replayTimeouts = [];
+		isPaused = false;
+		
+		// Utiliser les moves préparés pour avancer dans l'historique
+		let delayIncrement = parseInt(document.getElementById("replayDelay").value) || 600;
+		let delay = 0;
+		
+		// Jouer tous les coups depuis le début
+		for (let i = 0; i < state.moves.length; i++) {
+			let timeoutId = setTimeout(() => {
+				if (!isPaused) {
+					this.next();
+				}
+			}, delay);
+			replayTimeouts.push(timeoutId);
+			delay += delayIncrement;
+		}
+		
+		// Après la fin du replay, afficher le bouton play
+		let finalTimeout = setTimeout(() => {
+			document.getElementById("play-replay").style.display = "inline-block";
+			document.getElementById("pause-replay").style.display = "none";
+		}, delay);
+		replayTimeouts.push(finalTimeout);
+	},
+	pauseReplay() {
+		isPaused = true;
+		replayTimeouts.forEach(timeout => clearTimeout(timeout));
+		replayTimeouts = [];
+		document.getElementById("play-replay").style.display = "inline-block";
+		document.getElementById("pause-replay").style.display = "none";
+	},
+	playReplay() {
+		// Rejouer la séquence depuis l'état actuel
+		if (state.moves.length > 0) {
+			document.getElementById("play-replay").style.display = "none";
+			document.getElementById("pause-replay").style.display = "inline-block";
+			isPaused = false;
+			
+			// Calculer le nombre de coups restants
+			let remainingCount = state.moves.length - state.currentMoveIndex - 1;
+			
+			if (remainingCount > 0) {
+				let delay = 0;
+				let delayIncrement = parseInt(document.getElementById("replayDelay").value) || 600;
+				
+				replayTimeouts.forEach(timeout => clearTimeout(timeout));
+				replayTimeouts = [];
+				
+				// Jouer les coups restants
+				for (let i = 0; i < remainingCount; i++) {
+					let timeoutId = setTimeout(() => {
+						if (!isPaused) {
+							this.next();
+						}
+					}, delay);
+					replayTimeouts.push(timeoutId);
+					delay += delayIncrement;
+				}
+				
+				let finalTimeout = setTimeout(() => {
+					document.getElementById("play-replay").style.display = "inline-block";
+					document.getElementById("pause-replay").style.display = "none";
+				}, delay);
+				replayTimeouts.push(finalTimeout);
+			} else {
+				// Déjà à la fin
+				document.getElementById("play-replay").style.display = "inline-block";
+				document.getElementById("pause-replay").style.display = "none";
+			}
+		}
+	},
+	prepareSequence(sequence) {
+		// Parser la séquence et créer tous les états sans les jouer automatiquement
 		let moves = sequence.toUpperCase()
-			.replace(/[,;]/g, ' ') // Remplacer virgules et points-virgules par espaces
-			.split(/\s+/) // Diviser par espaces
-			.filter(m => m.length >= 2); // Filtrer les éléments vides
+			.replace(/[,;]/g, ' ')
+			.split(/\s+/)
+			.filter(m => m.length >= 2);
 		
 		let alphabets = ["A", "B", "C", "D", "E", "F", "G", "H"];
-		let delay = 0;
-		// Récupérer le délai configuré par l'utilisateur
-		let delayIncrement = parseInt(document.getElementById("replayDelay").value) || 600;
 		
+		// Sauvegarder tous les moves en jouant la séquence
+		let allMoves = [];
+		let wasLastTurnSkipped = false;
+		
+		// Jouer chaque coup silencieusement pour construire l'historique
 		for (let moveStr of moves) {
-			// Parser le coup (ex: "D3" -> colonne D, ligne 3)
 			let col = moveStr.charAt(0);
 			let row = parseInt(moveStr.substring(1));
-			
 			let j = alphabets.indexOf(col);
 			let i = row - 1;
 			
-			// Vérifier la validité
 			if (j >= 0 && j < 8 && i >= 0 && i < 8) {
-				setTimeout(() => {
-					this.inputHandler(i, j);
-				}, delay);
-				delay += delayIncrement; // Délai entre chaque coup
+				// Vérifier si le coup est valide pour le joueur actuel
+				if (state.grid[i][j] === 0) {
+					let move = state.validMoves[i * 10 + j];
+					if (typeof move !== "undefined") {
+						let current = JSON.parse(JSON.stringify(state.grid));
+						allMoves.push({
+							grid: current,
+							turn: state.turn,
+							position: { i, j }
+						});
+						
+						this.setSquare(i, j, state.turn);
+						this.react(state.turn, move);
+						wasLastTurnSkipped = false;
+						state.turn = state.turn === 1 ? 2 : 1;
+						
+						// Recalculer les coups valides pour le joueur suivant
+						this.calculateValidMoves();
+						
+						// Vérifier si le joueur suivant doit passer
+						while (Object.keys(state.validMoves).length === 0) {
+							// Vérifier si la partie est terminée
+							let emptyslots = 0;
+							for (let ii = 0; ii < 8; ii++) {
+								for (let jj = 0; jj < 8; jj++) {
+									if (state.grid[ii][jj] === 0) emptyslots++;
+								}
+							}
+							
+							if (emptyslots === 0 || wasLastTurnSkipped) {
+								// Partie terminée
+								break;
+							}
+							
+							// Le joueur doit passer
+							let current = JSON.parse(JSON.stringify(state.grid));
+							allMoves.push({
+								grid: current,
+								turn: state.turn,
+								position: { i: -1, j: -1 }
+							});
+							
+							wasLastTurnSkipped = true;
+							state.turn = state.turn === 1 ? 2 : 1;
+							this.calculateValidMoves();
+						}
+						
+						wasLastTurnSkipped = false;
+					}
+				}
 			}
 		}
+		
+		// Revenir à l'état initial (avant le premier coup)
+		this.setup(state.cpu);
+		state.moves = allMoves;
+		state.currentMoveIndex = -1;
+		
+		updateMoveHistory();
+		this.updateNavigationButtons();
+	},
+	calculateValidMoves() {
+		// Calculer les coups valides sans modifier l'UI ni state.moves
+		if (Object.keys(state.validMoves).length !== 0) {
+			for (let id in state.validMoves) {
+				squares[Math.floor(id / 10)][id % 10].classList.remove("valid");
+			}
+		}
+		let cp = state.turn;
+		state.validMoves = {};
+		let validMoveCount = 0;
+		state.p1 = 0;
+		state.p2 = 0;
+		for (let i = 0; i < 8; i++) {
+			for (let j = 0; j < 8; j++) {
+				if (state.grid[i][j] === 0) {
+					let r = this.check(i, j, cp);
+					if (r.size > 0) {
+						state.validMoves[i * 10 + j] = r;
+						validMoveCount++;
+					}
+				}
+				if (state.grid[i][j] === 1) {
+					state.p1++;
+				}
+				if (state.grid[i][j] === 2) {
+					state.p2++;
+				}
+			}
+		}
+		this.updateScore();
+		return validMoveCount;
+	},
+	goToFirst() {
+		// Réinitialiser à l'état initial
+		isPaused = true;
+		replayTimeouts.forEach(timeout => clearTimeout(timeout));
+		replayTimeouts = [];
+		
+		// Sauvegarder les moves avant de réinitialiser
+		let savedMoves = [...state.moves];
+		this.setup(state.cpu);
+		state.moves = savedMoves;
+		state.currentMoveIndex = -1;
+		updateMoveHistory();
+		this.updateNavigationButtons();
+		
+		document.getElementById("play-replay").style.display = "inline-block";
+		document.getElementById("pause-replay").style.display = "none";
+	},
+	goToLast() {
+		// Aller au dernier coup
+		isPaused = true;
+		replayTimeouts.forEach(timeout => clearTimeout(timeout));
+		replayTimeouts = [];
+		
+		if (state.moves.length > 0) {
+			state.currentMoveIndex = state.moves.length - 1;
+			let lastMove = state.moves[state.currentMoveIndex];
+			
+			// Charger l'état AVANT le dernier coup
+			state.grid = JSON.parse(JSON.stringify(lastMove.grid));
+			state.turn = lastMove.turn;
+			
+			// Appliquer le dernier coup pour obtenir l'état final
+			if (lastMove.position.i !== -1 && lastMove.position.j !== -1) {
+				// Coup normal (pas un passage)
+				let move = this.check(lastMove.position.i, lastMove.position.j, lastMove.turn);
+				this.setSquare(lastMove.position.i, lastMove.position.j, lastMove.turn);
+				this.react(lastMove.turn, move);
+				state.turn = lastMove.turn === 1 ? 2 : 1;
+			} else {
+				// Coup passé - juste changer de tour
+				state.turn = lastMove.turn === 1 ? 2 : 1;
+			}
+			
+			checkdom();
+			this.validMoves();
+			this.updateNavigationButtons();
+			updateMoveHistory();
+		}
+		
+		document.getElementById("play-replay").style.display = "inline-block";
+		document.getElementById("pause-replay").style.display = "none";
 	},
 };
 

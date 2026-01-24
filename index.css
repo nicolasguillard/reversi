@@ -468,6 +468,22 @@ h1 {
 	padding: 2px 4px;
 	border-radius: 3px;
 	text-align: center;
+	cursor: pointer;
+	transition: opacity 200ms;
+}
+
+.move-item:hover {
+	opacity: 0.8;
+}
+
+.move-item.future-move {
+	background-color: #1a1a1a !important;
+	color: #888;
+}
+
+.light .move-item.future-move {
+	background-color: #f5f5f5 !important;
+	color: #888;
 }
 
 .move-black {
@@ -774,12 +790,24 @@ body.light .row-label {
 }
 
 #navigation-btns {
-	display: flex;
+	display: none;
 	flex-direction: row;
 	gap: 10px;
 	justify-content: center;
 	align-items: center;
 	margin-top: 10px;
+}
+
+#first {
+	background-color: #6c757d;
+}
+
+#first:hover {
+	background-color: #5a6268;
+}
+
+#first:active {
+	background-color: #545b62;
 }
 
 #previous {
@@ -804,6 +832,43 @@ body.light .row-label {
 
 #next:active {
 	background-color: #004085;
+}
+
+#last {
+	background-color: #6c757d;
+}
+
+#last:hover {
+	background-color: #5a6268;
+}
+
+#last:active {
+	background-color: #545b62;
+}
+
+#play-replay {
+	background-color: #28a745;
+}
+
+#play-replay:hover {
+	background-color: #218838;
+}
+
+#play-replay:active {
+	background-color: #1e7e34;
+}
+
+#pause-replay {
+	background-color: #ffc107;
+	color: #000;
+}
+
+#pause-replay:hover {
+	background-color: #e0a800;
+}
+
+#pause-replay:active {
+	background-color: #d39e00;
 }
 
 #undo:disabled,
