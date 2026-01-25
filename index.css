@@ -671,6 +671,16 @@ body.light .row-label {
 	-webkit-tap-highlight-color: transparent;
 }
 
+/* Effet visuel pour les jetons retournés */
+.square.flipped {
+	background-color: #12bb12;
+	transition: background-color 300ms ease-in-out;
+}
+
+body.light .square.flipped {
+	background-color: #1fd41f;
+}
+
 .focused::before {
 	content: "";
 	width: 90%;

@@ -245,6 +245,7 @@ function initGrid() {
 	document.getElementById("stop").addEventListener("click", stop);
 	document.getElementById("playAgain").addEventListener("click", () => {
 		hideModal(victory);
+		isReplayingSequence = false;
 		logic.setup(state.cpu);
 	});
 	document.getElementById("back").addEventListener("click", () => {
@@ -517,7 +518,8 @@ let logic = {
 			state.moves.push({
 				grid: current,
 				turn: state.turn,
-				position: { i, j } // Stocker la position du coup
+				position: { i, j }, // Stocker la position du coup
+				flipped: Array.from(move) // Stocker les jetons retournés
 			});
 			state.currentMoveIndex = state.moves.length - 1;
 			this.setSquare(i, j, state.turn);
@@ -751,8 +753,35 @@ let logic = {
 		return [];
 	},
 	react(cp, move = new Set()) {
+		// D'abord, retirer la classe flipped de toutes les cases
+		for (let row = 0; row < 8; row++) {
+			for (let col = 0; col < 8; col++) {
+				squares[row][col].classList.remove('flipped');
+			}
+		}
+		// Ensuite, ajouter la classe flipped aux jetons retournés
 		for (let id of move) {
-			this.setSquare(Math.floor(id / 10), id % 10, cp);
+			let i = Math.floor(id / 10);
+			let j = id % 10;
+			this.setSquare(i, j, cp);
+			// Ajouter la classe flipped pour l'effet visuel
+			squares[i][j].classList.add('flipped');
+		}
+	},
+	showFlipped(flippedArray) {
+		// Retirer la classe flipped de toutes les cases
+		for (let row = 0; row < 8; row++) {
+			for (let col = 0; col < 8; col++) {
+				squares[row][col].classList.remove('flipped');
+			}
+		}
+		// Ajouter la classe flipped aux jetons spécifiés
+		for (let id of flippedArray) {
+			let i = Math.floor(id / 10);
+			let j = id % 10;
+			// Retirer la classe 'valid' si elle existe pour éviter les conflits visuels
+			squares[i][j].classList.remove('valid');
+			squares[i][j].classList.add('flipped');
 		}
 	},
 	cpu() {
@@ -840,12 +869,25 @@ let logic = {
 	},
 	previous() {
 		if (state.currentMoveIndex < 0) return;
+		
 		let r = state.moves[state.currentMoveIndex];
 		state.grid = JSON.parse(JSON.stringify(r.grid));
 		state.turn = r.turn;
 		state.currentMoveIndex--;
 		checkdom();
 		this.validMoves();
+		
+		// Afficher les jetons retournés par le coup où on se trouve maintenant
+		if (state.currentMoveIndex >= 0) {
+			let currentMove = state.moves[state.currentMoveIndex];
+			if (currentMove.flipped && currentMove.flipped.length > 0) {
+				this.showFlipped(currentMove.flipped);
+			}
+		} else {
+			// On est revenu à l'état initial, pas de jetons retournés à afficher
+			this.showFlipped([]);
+		}
+		
 		this.updateMoveNumbers();
 		this.updateLastMoveIndicator();
 		this.updateNavigationButtons();
@@ -859,28 +901,30 @@ let logic = {
 		state.grid = JSON.parse(JSON.stringify(nextMove.grid));
 		state.turn = nextMove.turn === 1 ? 2 : 1;
 		
-		// Vérifier si c'est le dernier coup
-		if (state.currentMoveIndex + 1 >= state.moves.length) {
-			// C'est le dernier coup - l'appliquer manuellement
-			if (nextMove.position.i !== -1 && nextMove.position.j !== -1) {
-				// Coup normal (pas un passage)
-				let moveSet = this.check(nextMove.position.i, nextMove.position.j, nextMove.turn);
-				this.setSquare(nextMove.position.i, nextMove.position.j, nextMove.turn);
-				this.react(nextMove.turn, moveSet);
-			}
-			// Changer de tour (pour tous les types de coups)
-			state.turn = nextMove.turn === 1 ? 2 : 1;
-		} else {
-			// Pas le dernier coup - utiliser l'état suivant
-			let futureGrid = state.moves[state.currentMoveIndex + 1].grid;
-			
-			// Vérifier si c'est un coup passé (Z0)
-			if (nextMove.position.i === -1 && nextMove.position.j === -1) {
-				// Coup passé - pas de pièce à placer, juste avancer au prochain état
-				state.grid = JSON.parse(JSON.stringify(futureGrid));
+		// Vérifier si c'est un coup passé (Z0)
+		if (nextMove.position.i === -1 && nextMove.position.j === -1) {
+			// Coup passé - pas de pièce à placer, juste avancer au prochain état
+			if (state.currentMoveIndex + 1 < state.moves.length) {
+				state.grid = JSON.parse(JSON.stringify(state.moves[state.currentMoveIndex + 1].grid));
 				state.turn = state.moves[state.currentMoveIndex + 1].turn;
 			} else {
-				// Coup normal - trouver et appliquer le coup qui a été joué
+				state.turn = nextMove.turn === 1 ? 2 : 1;
+			}
+		} else {
+			// Coup normal - utiliser les jetons retournés stockés ou les calculer
+			let moveSet;
+			if (nextMove.flipped && nextMove.flipped.length > 0) {
+				// Utiliser les jetons retournés stockés
+				moveSet = new Set(nextMove.flipped);
+			} else {
+				// Calculer les jetons retournés si non stockés
+				moveSet = this.check(nextMove.position.i, nextMove.position.j, nextMove.turn);
+			}
+			
+			// Appliquer le coup et l'état suivant
+			if (state.currentMoveIndex + 1 < state.moves.length) {
+				let futureGrid = state.moves[state.currentMoveIndex + 1].grid;
+				// Trouver et appliquer les changements
 				for (let i = 0; i < 8; i++) {
 					for (let j = 0; j < 8; j++) {
 						if (nextMove.grid[i][j] === 0 && futureGrid[i][j] !== 0) {
@@ -890,7 +934,14 @@ let logic = {
 				}
 				state.grid = JSON.parse(JSON.stringify(futureGrid));
 				state.turn = state.moves[state.currentMoveIndex + 1].turn;
+			} else {
+				// C'est le dernier coup
+				this.setSquare(nextMove.position.i, nextMove.position.j, nextMove.turn);
+				state.turn = nextMove.turn === 1 ? 2 : 1;
 			}
+			
+			// Appliquer l'effet visuel sur les jetons retournés
+			this.react(nextMove.turn, moveSet);
 		}
 		
 		checkdom();
@@ -940,17 +991,26 @@ let logic = {
 		
 		// Appliquer le coup à la position
 		if (move.position.i !== -1 && move.position.j !== -1) {
+			// Utiliser les jetons retournés stockés ou les calculer
+			let moveSet;
+			if (move.flipped && move.flipped.length > 0) {
+				moveSet = new Set(move.flipped);
+			} else {
+				moveSet = this.check(move.position.i, move.position.j, move.turn);
+			}
+			
 			// Trouver l'état après le coup en regardant le coup suivant
 			if (moveIndex + 1 < state.moves.length) {
 				state.grid = JSON.parse(JSON.stringify(state.moves[moveIndex + 1].grid));
 				state.turn = state.moves[moveIndex + 1].turn;
 			} else {
 				// C'est le dernier coup, on doit le jouer manuellement
-				let moveSet = this.check(move.position.i, move.position.j, move.turn);
 				this.setSquare(move.position.i, move.position.j, move.turn);
-				this.react(move.turn, moveSet);
 				state.turn = move.turn === 1 ? 2 : 1;
 			}
+			
+			// Appliquer l'effet visuel sur les jetons retournés
+			this.react(move.turn, moveSet);
 		} else {
 			// Coup passé
 			if (moveIndex + 1 < state.moves.length) {
@@ -1049,6 +1109,9 @@ let logic = {
 		}
 	},
 	prepareSequence(sequence) {
+		// Activer le mode replay pour éviter d'afficher la modale de victoire
+		isReplayingSequence = true;
+		
 		// Parser la séquence et créer tous les états sans les jouer automatiquement
 		let moves = sequence.toUpperCase()
 			.replace(/[,;]/g, ' ')
@@ -1078,7 +1141,8 @@ let logic = {
 						allMoves.push({
 							grid: current,
 							turn: state.turn,
-							position: { i, j }
+							position: { i, j },
+							flipped: Array.from(move) // Stocker les jetons retournés
 						});
 						
 						this.setSquare(i, j, state.turn);
@@ -1147,24 +1211,40 @@ let logic = {
 			if (lastMove.position.i !== -1 && lastMove.position.j !== -1) {
 				let i = lastMove.position.i;
 				let j = lastMove.position.j;
-				let player = allMoves.length % 2 === 1 ? 1 : 2;
-				if (lastMove.turn === 1) {
-					player = 2;
-				} else {
-					player = 1;
+				// Le joueur qui a joué ce coup est state.turn (avant changement)
+				this.setSquare(i, j, state.turn);
+				// Appliquer les retournements
+				if (lastMove.flipped && lastMove.flipped.length > 0) {
+					for (let id of lastMove.flipped) {
+						let fi = Math.floor(id / 10);
+						let fj = id % 10;
+						state.grid[fi][fj] = state.turn;
+					}
 				}
+				// Changer de tour pour le suivant
+				state.turn = state.turn === 1 ? 2 : 1;
 			}
 			
 			checkdom();
-			this.validMoves();
 			this.updateMoveNumbers();
 			this.updateLastMoveIndicator();
+			
+			// Afficher les jetons retournés par le dernier coup
+			if (lastMove.flipped && lastMove.flipped.length > 0) {
+				this.showFlipped(lastMove.flipped);
+			}
+			
+			// Calculer et afficher les coups valides en dernier
+			this.validMoves();
 		} else {
 			state.currentMoveIndex = -1;
 		}
 		
 		updateMoveHistory();
 		this.updateNavigationButtons();
+		
+		// Garder isReplayingSequence = true pour empêcher la modale de victoire
+		// lors de la navigation dans la séquence
 		
 		return { success: true };
 	},
@@ -1211,6 +1291,10 @@ let logic = {
 		this.setup(state.cpu);
 		state.moves = savedMoves;
 		state.currentMoveIndex = -1;
+		
+		// Retirer tous les jetons retournés car on est à l'état initial
+		this.showFlipped([]);
+		
 		updateMoveHistory();
 		this.updateMoveNumbers();
 		this.updateLastMoveIndicator();
