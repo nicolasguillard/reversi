@@ -137,44 +137,66 @@ function initGrid() {
 		document.getElementById("setupdisk").style.backgroundColor =
 			playerId.value !== "1" ? "black" : "white";
 	});
-	document.getElementById("gameSequence").addEventListener("blur", function() {
-		// Normaliser le format de la séquence
-		let sequence = this.value.trim();
+	document.getElementById("play").addEventListener("click", () => {
+		let sequence = document.getElementById("gameSequence").value.trim();
+		let gameSequenceField = document.getElementById("gameSequence");
+		
+		// Valider la séquence si elle est fournie
 		if (sequence) {
-			// Convertir en majuscules et extraire les coups
-			sequence = sequence.toUpperCase().replace(/[,;]/g, ' ');
+			let moves = sequence.toUpperCase()
+				.replace(/[,;]/g, ' ')
+				.split(/\s+/)
+				.filter(m => m.length > 0);
 			
-			// Si la séquence est continue sans espaces (ex: "F5F6E6F4"), séparer les coups
-			if (!sequence.includes(' ')) {
-				// Extraire les coups de 2 ou 3 caractères
-				let moves = [];
-				let i = 0;
-				while (i < sequence.length) {
-					// Vérifier si c'est un coup valide (lettre + chiffre)
-					if (i + 1 < sequence.length && 
-						sequence[i].match(/[A-H]/) && 
-						sequence[i + 1].match(/[1-8]/)) {
-						moves.push(sequence[i] + sequence[i + 1]);
-						i += 2;
-					} else {
-						i++;
-					}
+			let isValid = true;
+			for (let move of moves) {
+				// Vérifier que chaque coup a exactement 2 caractères
+				if (move.length !== 2) {
+					isValid = false;
+					break;
 				}
-				this.value = moves.join(' ');
+				// Vérifier que le premier caractère est une lettre A-H
+				if (!move[0].match(/[A-H]/)) {
+					isValid = false;
+					break;
+				}
+				// Vérifier que le deuxième caractère est un chiffre 1-8
+				if (!move[1].match(/[1-8]/)) {
+					isValid = false;
+					break;
+				}
+			}
+			
+			if (!isValid) {
+				// Mettre le fond en rouge et arrêter
+				gameSequenceField.style.backgroundColor = "#ffcccc";
+				return;
 			} else {
-				// Nettoyer les espaces multiples
-				this.value = sequence.split(/\s+/).filter(m => m.length >= 2).join(' ');
+				// Réinitialiser le fond si valide
+				gameSequenceField.style.backgroundColor = "";
+			}
+			
+			// Valider la séquence en la simulant avant de changer de vue
+			let cpu = 0; // Mode deux joueurs pour la simulation
+			logic.setup(cpu);
+			let result = logic.prepareSequence(sequence);
+			
+			if (!result.success) {
+				// Coup invalide trouvé - afficher le modal d'erreur sans changer de vue
+				gameSequenceField.style.backgroundColor = "#ffcccc";
+				document.getElementById("error-message").textContent = 
+					"Coup invalide dans la séquence : coup n°" + result.moveNumber + " (" + result.invalidMove + ")";
+				showModal(document.getElementById("error-modal"));
+				return;
 			}
 		}
-	});
-	document.getElementById("play").addEventListener("click", () => {
+		
 		document.body.classList.add("fade");
 		setTimeout(() => {
 			document.body.classList.remove("setup-active");
 			document.body.classList.add("game-active");
 			document.body.classList.remove("fade");
 			let cpu;
-			let sequence = document.getElementById("gameSequence").value.trim();
 			// Si une séquence est fournie, forcer le mode deux joueurs
 			if (sequence || playerNumber.value === "2") {
 				cpu = 0;
@@ -185,21 +207,23 @@ function initGrid() {
 			if (sequence) {
 				currentSequence = sequence;
 				isReplayingSequence = true;
-				document.getElementById("undo").disabled = true;
+				document.getElementById("undo").style.display = "none";
 				document.getElementById("navigation-btns").style.display = "flex";
 				document.getElementById("play-replay").style.display = "inline-block";
 				document.getElementById("pause-replay").style.display = "none";
+				
+				// Préparer la séquence (déjà validée)
 				logic.prepareSequence(sequence);
 			} else {
 				isReplayingSequence = false;
-				document.getElementById("undo").disabled = false;
+				document.getElementById("undo").style.display = "inline-block";
 				document.getElementById("navigation-btns").style.display = "none";
 			}
 		}, 500);
 	});
 	let stop = () => {
 		isReplayingSequence = false;
-		document.getElementById("undo").disabled = false;
+		document.getElementById("undo").style.display = "inline-block";
 		document.getElementById("navigation-btns").style.display = "none";
 		document.body.classList.add("fade");
 		setTimeout(() => {
@@ -221,6 +245,9 @@ function initGrid() {
 	document.getElementById("cancel").addEventListener("click", () => {
 		hideModal(victory);
 	});
+	document.getElementById("closeError").addEventListener("click", () => {
+		hideModal(document.getElementById("error-modal"));
+	});
 	document.getElementById("howto").addEventListener("click", () => {
 		showModal(rules);
 	});
@@ -230,6 +257,13 @@ function initGrid() {
 	document.getElementById("theme").addEventListener("click", () => {
 		darkmode = !darkmode;
 		setTheme(darkmode);
+	});
+	document.getElementById("showValidMoves").addEventListener("change", (e) => {
+		if (e.target.checked) {
+			grid.classList.remove("hide-valid-moves");
+		} else {
+			grid.classList.add("hide-valid-moves");
+		}
 	});
 }
 
@@ -501,15 +535,17 @@ let logic = {
 				this.endgame();
 				return false;
 			}
-			// Enregistrer un coup passé (Z0) dans l'historique
-			let current = JSON.parse(JSON.stringify(state.grid));
-			state.moves.push({
-				grid: current,
-				turn: state.turn,
-				position: { i: -1, j: -1 } // Position spéciale pour indiquer un coup passé
-			});
-			state.currentMoveIndex = state.moves.length - 1;
-			updateMoveHistory();
+			// Enregistrer un coup passé (Z0) dans l'historique seulement si on ne rejoue pas une séquence
+			if (!isReplayingSequence) {
+				let current = JSON.parse(JSON.stringify(state.grid));
+				state.moves.push({
+					grid: current,
+					turn: state.turn,
+					position: { i: -1, j: -1 } // Position spéciale pour indiquer un coup passé
+				});
+				state.currentMoveIndex = state.moves.length - 1;
+				updateMoveHistory();
+			}
 			state.wasLastTurnSkipped = true;
 			this.switchTurn();
 		} else {
@@ -657,23 +693,41 @@ let logic = {
 		// Appliquer le coup suivant
 		state.grid = JSON.parse(JSON.stringify(nextMove.grid));
 		state.turn = nextMove.turn === 1 ? 2 : 1;
-		// Trouver et appliquer le coup qui a été joué
-		for (let i = 0; i < 8; i++) {
-			for (let j = 0; j < 8; j++) {
-				if (state.currentMoveIndex + 1 < state.moves.length) {
-					let futureGrid = state.moves[state.currentMoveIndex + 1].grid;
-					if (nextMove.grid[i][j] === 0 && futureGrid[i][j] !== 0) {
-						this.setSquare(i, j, futureGrid[i][j]);
+		
+		// Vérifier si c'est le dernier coup
+		if (state.currentMoveIndex + 1 >= state.moves.length) {
+			// C'est le dernier coup - l'appliquer manuellement
+			if (nextMove.position.i !== -1 && nextMove.position.j !== -1) {
+				// Coup normal (pas un passage)
+				let moveSet = this.check(nextMove.position.i, nextMove.position.j, nextMove.turn);
+				this.setSquare(nextMove.position.i, nextMove.position.j, nextMove.turn);
+				this.react(nextMove.turn, moveSet);
+			}
+			// Changer de tour (pour tous les types de coups)
+			state.turn = nextMove.turn === 1 ? 2 : 1;
+		} else {
+			// Pas le dernier coup - utiliser l'état suivant
+			let futureGrid = state.moves[state.currentMoveIndex + 1].grid;
+			
+			// Vérifier si c'est un coup passé (Z0)
+			if (nextMove.position.i === -1 && nextMove.position.j === -1) {
+				// Coup passé - pas de pièce à placer, juste avancer au prochain état
+				state.grid = JSON.parse(JSON.stringify(futureGrid));
+				state.turn = state.moves[state.currentMoveIndex + 1].turn;
+			} else {
+				// Coup normal - trouver et appliquer le coup qui a été joué
+				for (let i = 0; i < 8; i++) {
+					for (let j = 0; j < 8; j++) {
+						if (nextMove.grid[i][j] === 0 && futureGrid[i][j] !== 0) {
+							this.setSquare(i, j, futureGrid[i][j]);
+						}
 					}
 				}
+				state.grid = JSON.parse(JSON.stringify(futureGrid));
+				state.turn = state.moves[state.currentMoveIndex + 1].turn;
 			}
 		}
-		state.grid = state.currentMoveIndex + 1 < state.moves.length 
-			? JSON.parse(JSON.stringify(state.moves[state.currentMoveIndex + 1].grid))
-			: state.grid;
-		state.turn = state.currentMoveIndex + 1 < state.moves.length
-			? state.moves[state.currentMoveIndex + 1].turn
-			: state.turn;
+		
 		checkdom();
 		this.validMoves();
 		this.updateNavigationButtons();
@@ -682,15 +736,24 @@ let logic = {
 	updateNavigationButtons() {
 		let prevBtn = document.getElementById("previous");
 		let nextBtn = document.getElementById("next");
+		let playReplayBtn = document.getElementById("play-replay");
+		let lastBtn = document.getElementById("last");
 		
 		// Désactiver pendant le tour du CPU
 		let isCpuTurn = state.cpu !== 0 && state.cpu === state.turn;
+		
+		// Vérifier si on est à la fin de l'historique
+		let isAtEnd = state.currentMoveIndex >= state.moves.length - 1;
 		
 		// Previous: désactivé si au début de l'historique ou tour CPU
 		prevBtn.disabled = state.currentMoveIndex < 0 || isCpuTurn;
 		
 		// Next: désactivé si à la fin de l'historique ou tour CPU
-		nextBtn.disabled = state.currentMoveIndex >= state.moves.length - 1 || isCpuTurn;
+		nextBtn.disabled = isAtEnd || isCpuTurn;
+		
+		// Play-replay et Last: désactivés si à la fin de l'historique ou tour CPU
+		if (playReplayBtn) playReplayBtn.disabled = isAtEnd || isCpuTurn;
+		if (lastBtn) lastBtn.disabled = isAtEnd || isCpuTurn;
 	},
 	navigateToMove(moveIndex) {
 		// Naviguer vers un coup spécifique en cliquant dans l'historique
@@ -755,6 +818,7 @@ let logic = {
 		let finalTimeout = setTimeout(() => {
 			document.getElementById("play-replay").style.display = "inline-block";
 			document.getElementById("pause-replay").style.display = "none";
+			this.updateNavigationButtons();
 		}, delay);
 		replayTimeouts.push(finalTimeout);
 	},
@@ -764,6 +828,7 @@ let logic = {
 		replayTimeouts = [];
 		document.getElementById("play-replay").style.display = "inline-block";
 		document.getElementById("pause-replay").style.display = "none";
+		this.updateNavigationButtons();
 	},
 	playReplay() {
 		// Rejouer la séquence depuis l'état actuel
@@ -796,12 +861,14 @@ let logic = {
 				let finalTimeout = setTimeout(() => {
 					document.getElementById("play-replay").style.display = "inline-block";
 					document.getElementById("pause-replay").style.display = "none";
+					this.updateNavigationButtons();
 				}, delay);
 				replayTimeouts.push(finalTimeout);
 			} else {
 				// Déjà à la fin
 				document.getElementById("play-replay").style.display = "inline-block";
 				document.getElementById("pause-replay").style.display = "none";
+				this.updateNavigationButtons();
 			}
 		}
 	},
@@ -819,7 +886,8 @@ let logic = {
 		let wasLastTurnSkipped = false;
 		
 		// Jouer chaque coup silencieusement pour construire l'historique
-		for (let moveStr of moves) {
+		for (let moveIndex = 0; moveIndex < moves.length; moveIndex++) {
+			let moveStr = moves[moveIndex];
 			let col = moveStr.charAt(0);
 			let row = parseInt(moveStr.substring(1));
 			let j = alphabets.indexOf(col);
@@ -874,8 +942,17 @@ let logic = {
 						}
 						
 						wasLastTurnSkipped = false;
+					} else {
+						// Coup invalide - la case n'est pas jouable
+						return { success: false, invalidMove: moveStr, moveNumber: moveIndex + 1 };
 					}
+				} else {
+					// Coup invalide - la case n'est pas vide
+					return { success: false, invalidMove: moveStr, moveNumber: moveIndex + 1 };
 				}
+			} else {
+				// Coup invalide - hors limites
+				return { success: false, invalidMove: moveStr, moveNumber: moveIndex + 1 };
 			}
 		}
 		
@@ -886,6 +963,8 @@ let logic = {
 		
 		updateMoveHistory();
 		this.updateNavigationButtons();
+		
+		return { success: true };
 	},
 	calculateValidMoves() {
 		// Calculer les coups valides sans modifier l'UI ni state.moves
@@ -931,10 +1010,10 @@ let logic = {
 		state.moves = savedMoves;
 		state.currentMoveIndex = -1;
 		updateMoveHistory();
-		this.updateNavigationButtons();
 		
 		document.getElementById("play-replay").style.display = "inline-block";
 		document.getElementById("pause-replay").style.display = "none";
+		this.updateNavigationButtons();
 	},
 	goToLast() {
 		// Aller au dernier coup
@@ -964,12 +1043,12 @@ let logic = {
 			
 			checkdom();
 			this.validMoves();
-			this.updateNavigationButtons();
 			updateMoveHistory();
 		}
 		
 		document.getElementById("play-replay").style.display = "inline-block";
 		document.getElementById("pause-replay").style.display = "none";
+		this.updateNavigationButtons();
 	},
 };
 

@@ -228,6 +228,44 @@ h1 {
 	padding: 2px 0 15px 0;
 }
 
+#error-modal {
+	text-align: center;
+	padding: 32px;
+	max-width: 500px;
+}
+
+#error-modal h2 {
+	color: #dc3545;
+	margin-bottom: 20px;
+	font-size: 24px;
+}
+
+#error-message {
+	background-color: #ffcccc;
+	padding: 16px;
+	border-radius: 8px;
+	margin-bottom: 24px;
+	font-size: 16px;
+	color: #721c24;
+	border: 2px solid #dc3545;
+}
+
+body.light #error-message {
+	background-color: #f8d7da;
+	color: #721c24;
+	border-color: #f5c6cb;
+}
+
+#closeError {
+	background-color: #dc3545;
+	color: white;
+	min-width: 120px;
+}
+
+#closeError:hover {
+	background-color: #c82333;
+}
+
 .visible.modal {
 	transform: translateY(0);
 	opacity: 1;
@@ -487,17 +525,17 @@ h1 {
 }
 
 .move-black {
-	background-color: #333;
+	background-color: #222;
 	color: #fff;
 }
 
 .light .move-black {
-	background-color: #bbb;
+	background-color: #888;
 	color: #000;
 }
 
 .move-white {
-	background-color: #555;
+	background-color: #777;
 	color: #fff;
 }
 
@@ -764,6 +802,10 @@ body.light .row-label {
 	cursor: pointer;
 }
 
+#grid.hide-valid-moves .valid::before {
+	opacity: 0 !important;
+}
+
 .turn-Black .valid::before {
 	opacity: 0.4;
 	transform: scaleY(1);
@@ -873,9 +915,37 @@ body.light .row-label {
 
 #undo:disabled,
 #previous:disabled,
-#next:disabled {
+#next:disabled,
+#play-replay:disabled,
+#last:disabled {
 	opacity: 0.5;
 	cursor: not-allowed;
 	box-shadow: none;
 	pointer-events: none;
+}
+
+.show-moves-container {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-top: 12px;
+	justify-content: center;
+	font-size: 14px;
+}
+
+.show-moves-container input[type="checkbox"] {
+	width: 18px;
+	height: 18px;
+	cursor: pointer;
+	accent-color: #008000;
+}
+
+.show-moves-container label {
+	cursor: pointer;
+	user-select: none;
+	color: white;
+}
+
+body.light .show-moves-container label {
+	color: black;
 }

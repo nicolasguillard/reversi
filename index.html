@@ -80,6 +80,11 @@
 				<button id="cancel" class="btn">Cancel!</button>
 			</div>
 		</div>
+		<div id="error-modal" class="modal">
+			<h2>⚠️ Erreur de Validation</h2>
+			<div id="error-message"></div>
+			<button id="closeError" class="btn">OK</button>
+		</div>
 		<div id="backdrop"></div>
 		<div id="game">
 			<div id="state">
@@ -110,6 +115,10 @@
 				<button id="previous" class="btn nav-btn">◀ Previous</button>
 				<button id="next" class="btn nav-btn">Next ▶</button>
 				<button id="last" class="btn nav-btn">Last ⏭</button>
+				<div class="show-moves-container">
+					<input type="checkbox" id="showValidMoves" checked />
+					<label for="showValidMoves">Show valid moves</label>
+				</div>
 			</div>
 		</div>
 		<script src="./index.js"></script>
