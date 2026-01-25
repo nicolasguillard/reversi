@@ -207,6 +207,7 @@ function initGrid() {
 			if (sequence) {
 				currentSequence = sequence;
 				isReplayingSequence = true;
+				document.body.classList.add("replaying-sequence");
 				document.getElementById("undo").style.display = "none";
 				document.getElementById("navigation-btns").style.display = "flex";
 				document.getElementById("play-replay").style.display = "inline-block";
@@ -223,6 +224,7 @@ function initGrid() {
 	});
 	let stop = () => {
 		isReplayingSequence = false;
+		document.body.classList.remove("replaying-sequence");
 		document.getElementById("undo").style.display = "inline-block";
 		document.getElementById("navigation-btns").style.display = "none";
 		document.body.classList.add("fade");
@@ -431,6 +433,15 @@ let logic = {
 		};
 		for (let i = 0; i < 8; i++) {
 			state.grid[i] = new Array(8).fill(0);
+		}
+		// Nettoyer tous les indicateurs de dernier coup
+		for (let row = 0; row < 8; row++) {
+			for (let col = 0; col < 8; col++) {
+				let indicator = squares[row][col].querySelector('.last-move-indicator');
+				if (indicator) {
+					indicator.remove();
+				}
+			}
 		}
 		this.setSquare(3, 3, 2);
 		this.setSquare(3, 4, 1);

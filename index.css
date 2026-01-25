@@ -803,6 +803,10 @@ body.light .row-label {
 	cursor: pointer;
 }
 
+.replaying-sequence .valid {
+	cursor: default;
+}
+
 #grid.hide-valid-moves .valid::before {
 	opacity: 0 !important;
 }
