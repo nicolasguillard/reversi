@@ -1122,10 +1122,36 @@ let logic = {
 			}
 		}
 		
-		// Revenir à l'état initial (avant le premier coup)
+		// Revenir à l'état initial puis avancer jusqu'au dernier coup
 		this.setup(state.cpu);
 		state.moves = allMoves;
-		state.currentMoveIndex = -1;
+		
+		// Positionner l'état au dernier coup joué
+		if (allMoves.length > 0) {
+			state.currentMoveIndex = allMoves.length - 1;
+			let lastMove = allMoves[allMoves.length - 1];
+			state.grid = JSON.parse(JSON.stringify(lastMove.grid));
+			state.turn = lastMove.turn;
+			
+			// Appliquer le dernier coup pour avoir l'état complet
+			if (lastMove.position.i !== -1 && lastMove.position.j !== -1) {
+				let i = lastMove.position.i;
+				let j = lastMove.position.j;
+				let player = allMoves.length % 2 === 1 ? 1 : 2;
+				if (lastMove.turn === 1) {
+					player = 2;
+				} else {
+					player = 1;
+				}
+			}
+			
+			checkdom();
+			this.validMoves();
+			this.updateMoveNumbers();
+			this.updateLastMoveIndicator();
+		} else {
+			state.currentMoveIndex = -1;
+		}
 		
 		updateMoveHistory();
 		this.updateNavigationButtons();

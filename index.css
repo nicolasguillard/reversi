@@ -1004,7 +1004,7 @@ body.light .show-moves-container label {
 	color: black;
 }
 
-.show-numbers-container {
+.show-checkboxes-container {
 	display: flex;
 	flex-direction: row;
 	align-items: center;
@@ -1015,13 +1015,13 @@ body.light .show-moves-container label {
 	flex-wrap: wrap;
 }
 
-.show-numbers-container .show-moves-container {
+.show-checkboxes-container .show-moves-container {
 	display: flex;
 	align-items: center;
 	gap: 8px;
 }
 
-.show-numbers-container input[type="checkbox"],
+.show-checkboxes-container input[type="checkbox"],
 .show-moves-container input[type="checkbox"] {
 	width: 18px;
 	height: 18px;
@@ -1029,13 +1029,13 @@ body.light .show-moves-container label {
 	accent-color: #008000;
 }
 
-.show-numbers-container label {
+.show-checkboxes-container label {
 	cursor: pointer;
 	user-select: none;
 	color: white;
 }
 
-body.light .show-numbers-container label {
+body.light .show-checkboxes-container label {
 	color: black;
 }
 
