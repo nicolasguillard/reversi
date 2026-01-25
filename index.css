@@ -831,8 +831,8 @@ body.light .row-label {
 	position: absolute;
 	top: 50%;
 	left: 50%;
-	width: 25%;
-	height: 25%;
+	width: 30%;
+	height: 30%;
 	transform: translate(-50%, -50%);
 	background-color: #ff0000;
 	border-radius: 50%;
@@ -844,8 +844,8 @@ body.light .row-label {
 	position: absolute;
 	top: 50%;
 	left: 50%;
-	width: 50%;
-	height: 50%;
+	width: 30%;
+	height: 30%;
 	transform: translate(-50%, -50%);
 	background-color: #0a880a;
 	border-radius: 50%;
@@ -857,7 +857,17 @@ body.light .row-label {
 	font-family: monospace;
 	font-weight: bold;
 	color: #000;
-	font-size: 1.5vmin;
+	font-size: 1.2vmin;
+}
+
+.move-number-indicator.last-move-number {
+	background-color: #ff0000;
+	color: #fff;
+}
+
+#grid.hide-last-move .move-number-indicator.last-move-number {
+	background-color: #0a880a;
+	color: #000;
 }
 
 #grid.hide-move-numbers .move-number-indicator {

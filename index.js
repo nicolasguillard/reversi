@@ -273,6 +273,7 @@ function initGrid() {
 		} else {
 			grid.classList.add("hide-last-move");
 		}
+		logic.updateLastMoveIndicator();
 	});
 	document.getElementById("showMoveNumbers").addEventListener("change", (e) => {
 		if (e.target.checked) {
@@ -280,6 +281,7 @@ function initGrid() {
 		} else {
 			grid.classList.add("hide-move-numbers");
 		}
+		logic.updateLastMoveIndicator();
 	});
 	
 	// Formater automatiquement la séquence de jeu
@@ -494,26 +496,10 @@ let logic = {
 				position: { i, j } // Stocker la position du coup
 			});
 			state.currentMoveIndex = state.moves.length - 1;
-			// Retirer tous les indicateurs de dernier coup
-			for (let row = 0; row < 8; row++) {
-				for (let col = 0; col < 8; col++) {
-					let indicator = squares[row][col].querySelector('.last-move-indicator');
-					if (indicator) {
-						indicator.remove();
-					}
-				}
-			}
-			// Ajouter l'indicateur sur la case actuelle
-			let indicator = document.createElement('div');
-			indicator.classList.add('last-move-indicator');
-			squares[i][j].appendChild(indicator);
-			// Ajouter le numéro d'ordre du coup
-			let moveNumber = document.createElement('div');
-			moveNumber.classList.add('move-number-indicator');
-			moveNumber.textContent = state.moves.length;
-			squares[i][j].appendChild(moveNumber);
 			this.setSquare(i, j, state.turn);
 			this.react(state.turn, move);
+			this.updateMoveNumbers();
+			this.updateLastMoveIndicator();
 			this.switchTurn();
 			this.updateScore();
 			updateMoveHistory();
@@ -554,8 +540,11 @@ let logic = {
 		}
 		state.grid = r.grid;
 		state.turn = r.turn;
+		state.currentMoveIndex = state.moves.length - 1;
 		checkdom();
 		this.validMoves();
+		this.updateMoveNumbers();
+		this.updateLastMoveIndicator();
 		this.updateNavigationButtons();
 		updateMoveHistory();
 		localStorage.setItem("lastGame", JSON.stringify(state));
@@ -757,9 +746,14 @@ let logic = {
 		}, 1500);
 	},
 	updateLastMoveIndicator() {
-		// Retirer tous les indicateurs de dernier coup
+		// Retirer la classe last-move-number de tous les numéros
 		for (let row = 0; row < 8; row++) {
 			for (let col = 0; col < 8; col++) {
+				let numberIndicator = squares[row][col].querySelector('.move-number-indicator');
+				if (numberIndicator) {
+					numberIndicator.classList.remove('last-move-number');
+				}
+				// Retirer aussi l'ancien indicateur rouge si présent
 				let indicator = squares[row][col].querySelector('.last-move-indicator');
 				if (indicator) {
 					indicator.remove();
@@ -767,14 +761,33 @@ let logic = {
 			}
 		}
 		
-		// Ajouter l'indicateur sur le dernier coup joué
+		// Ajouter la classe last-move-number au dernier coup joué
 		if (state.currentMoveIndex >= 0 && state.currentMoveIndex < state.moves.length) {
 			let currentMove = state.moves[state.currentMoveIndex];
 			// Vérifier que ce n'est pas un coup passé (Z0)
 			if (currentMove.position.i !== -1 && currentMove.position.j !== -1) {
-				let indicator = document.createElement('div');
-				indicator.classList.add('last-move-indicator');
-				squares[currentMove.position.i][currentMove.position.j].appendChild(indicator);
+				// Vérifier si le dernier coup doit être affiché
+				let lastMoveHidden = grid.classList.contains('hide-last-move');
+				
+				if (!lastMoveHidden) {
+					let numbersHidden = grid.classList.contains('hide-move-numbers');
+					let numberIndicator = squares[currentMove.position.i][currentMove.position.j].querySelector('.move-number-indicator');
+					
+					if (numbersHidden) {
+						// Les numéros sont masqués, afficher le point rouge
+						let indicator = document.createElement('div');
+						indicator.classList.add('last-move-indicator');
+						squares[currentMove.position.i][currentMove.position.j].appendChild(indicator);
+					} else if (numberIndicator) {
+						// Les numéros sont visibles et un numéro existe, ajouter la classe last-move-number
+						numberIndicator.classList.add('last-move-number');
+					} else {
+						// Pas de numéro (coup passé?), ajouter le point rouge
+						let indicator = document.createElement('div');
+						indicator.classList.add('last-move-indicator');
+						squares[currentMove.position.i][currentMove.position.j].appendChild(indicator);
+					}
+				}
 			}
 		}
 	},
@@ -809,8 +822,8 @@ let logic = {
 		state.currentMoveIndex--;
 		checkdom();
 		this.validMoves();
-		this.updateLastMoveIndicator();
 		this.updateMoveNumbers();
+		this.updateLastMoveIndicator();
 		this.updateNavigationButtons();
 		updateMoveHistory();
 	},
@@ -858,8 +871,8 @@ let logic = {
 		
 		checkdom();
 		this.validMoves();
-		this.updateLastMoveIndicator();
 		this.updateMoveNumbers();
+		this.updateLastMoveIndicator();
 		this.updateNavigationButtons();
 		updateMoveHistory();
 	},
@@ -927,8 +940,8 @@ let logic = {
 		
 		checkdom();
 		this.validMoves();
-		this.updateLastMoveIndicator();
 		this.updateMoveNumbers();
+		this.updateLastMoveIndicator();
 		this.updateNavigationButtons();
 		updateMoveHistory();
 	},
@@ -1149,8 +1162,8 @@ let logic = {
 		state.moves = savedMoves;
 		state.currentMoveIndex = -1;
 		updateMoveHistory();
-		this.updateLastMoveIndicator();
 		this.updateMoveNumbers();
+		this.updateLastMoveIndicator();
 		
 		document.getElementById("play-replay").style.display = "inline-block";
 		document.getElementById("pause-replay").style.display = "none";
@@ -1184,8 +1197,8 @@ let logic = {
 			
 			checkdom();
 			this.validMoves();
-			this.updateLastMoveIndicator();
 			this.updateMoveNumbers();
+			this.updateLastMoveIndicator();
 			updateMoveHistory();
 		}
 		
