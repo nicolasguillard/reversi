@@ -1038,3 +1038,24 @@ body.light .show-moves-container label {
 body.light .show-numbers-container label {
 	color: black;
 }
+
+.square-index {
+	position: absolute;
+	bottom: 2px;
+	left: 4px;
+	font-size: 1.26vmin;
+	font-weight: bold;
+	color: #000;
+	display: none;
+	z-index: 25;
+	pointer-events: none;
+	font-family: monospace;
+}
+
+body.light .square-index {
+	color: #fff;
+}
+
+#grid.show-square-indices .square-index {
+	display: block;
+}

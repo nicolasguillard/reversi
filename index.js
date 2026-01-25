@@ -91,6 +91,13 @@ function initGrid() {
 			let element = document.createElement("div");
 			element.id = `${alphabets[j]}${i + 1}`;
 			element.classList.add("square");
+			
+			// Ajouter l'indice de case (A1=1, A2=2... H8=64) column-major
+			let indexSpan = document.createElement("span");
+			indexSpan.classList.add("square-index");
+			indexSpan.textContent = (j * 8) + i + 1;
+			element.appendChild(indexSpan);
+
 			element.addEventListener("click", () => {
 				if (state.cpu === state.turn) return;
 				if (isReplayingSequence) return;
@@ -282,6 +289,13 @@ function initGrid() {
 			grid.classList.add("hide-move-numbers");
 		}
 		logic.updateLastMoveIndicator();
+	});
+	document.getElementById("showSquareIndices").addEventListener("change", (e) => {
+		if (e.target.checked) {
+			grid.classList.add("show-square-indices");
+		} else {
+			grid.classList.remove("show-square-indices");
+		}
 	});
 	
 	// Formater automatiquement la séquence de jeu
