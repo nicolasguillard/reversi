@@ -274,6 +274,13 @@ function initGrid() {
 			grid.classList.add("hide-last-move");
 		}
 	});
+	document.getElementById("showMoveNumbers").addEventListener("change", (e) => {
+		if (e.target.checked) {
+			grid.classList.remove("hide-move-numbers");
+		} else {
+			grid.classList.add("hide-move-numbers");
+		}
+	});
 	
 	// Formater automatiquement la séquence de jeu
 	document.getElementById("gameSequence").addEventListener("blur", function() {
@@ -434,12 +441,16 @@ let logic = {
 		for (let i = 0; i < 8; i++) {
 			state.grid[i] = new Array(8).fill(0);
 		}
-		// Nettoyer tous les indicateurs de dernier coup
+		// Nettoyer tous les indicateurs de dernier coup et les numéros
 		for (let row = 0; row < 8; row++) {
 			for (let col = 0; col < 8; col++) {
 				let indicator = squares[row][col].querySelector('.last-move-indicator');
 				if (indicator) {
 					indicator.remove();
+				}
+				let numberIndicator = squares[row][col].querySelector('.move-number-indicator');
+				if (numberIndicator) {
+					numberIndicator.remove();
 				}
 			}
 		}
@@ -496,6 +507,11 @@ let logic = {
 			let indicator = document.createElement('div');
 			indicator.classList.add('last-move-indicator');
 			squares[i][j].appendChild(indicator);
+			// Ajouter le numéro d'ordre du coup
+			let moveNumber = document.createElement('div');
+			moveNumber.classList.add('move-number-indicator');
+			moveNumber.textContent = state.moves.length;
+			squares[i][j].appendChild(moveNumber);
 			this.setSquare(i, j, state.turn);
 			this.react(state.turn, move);
 			this.switchTurn();
@@ -762,6 +778,29 @@ let logic = {
 			}
 		}
 	},
+	updateMoveNumbers() {
+		// Retirer tous les numéros de coups
+		for (let row = 0; row < 8; row++) {
+			for (let col = 0; col < 8; col++) {
+				let numberIndicator = squares[row][col].querySelector('.move-number-indicator');
+				if (numberIndicator) {
+					numberIndicator.remove();
+				}
+			}
+		}
+		
+		// Ajouter les numéros pour tous les coups joués jusqu'au coup actuel
+		for (let moveIdx = 0; moveIdx <= state.currentMoveIndex; moveIdx++) {
+			let move = state.moves[moveIdx];
+			// Vérifier que ce n'est pas un coup passé (Z0)
+			if (move.position.i !== -1 && move.position.j !== -1) {
+				let numberIndicator = document.createElement('div');
+				numberIndicator.classList.add('move-number-indicator');
+				numberIndicator.textContent = moveIdx + 1;
+				squares[move.position.i][move.position.j].appendChild(numberIndicator);
+			}
+		}
+	},
 	previous() {
 		if (state.currentMoveIndex < 0) return;
 		let r = state.moves[state.currentMoveIndex];
@@ -771,6 +810,7 @@ let logic = {
 		checkdom();
 		this.validMoves();
 		this.updateLastMoveIndicator();
+		this.updateMoveNumbers();
 		this.updateNavigationButtons();
 		updateMoveHistory();
 	},
@@ -819,6 +859,7 @@ let logic = {
 		checkdom();
 		this.validMoves();
 		this.updateLastMoveIndicator();
+		this.updateMoveNumbers();
 		this.updateNavigationButtons();
 		updateMoveHistory();
 	},
@@ -887,6 +928,7 @@ let logic = {
 		checkdom();
 		this.validMoves();
 		this.updateLastMoveIndicator();
+		this.updateMoveNumbers();
 		this.updateNavigationButtons();
 		updateMoveHistory();
 	},
@@ -1108,6 +1150,7 @@ let logic = {
 		state.currentMoveIndex = -1;
 		updateMoveHistory();
 		this.updateLastMoveIndicator();
+		this.updateMoveNumbers();
 		
 		document.getElementById("play-replay").style.display = "inline-block";
 		document.getElementById("pause-replay").style.display = "none";
@@ -1142,6 +1185,7 @@ let logic = {
 			checkdom();
 			this.validMoves();
 			this.updateLastMoveIndicator();
+			this.updateMoveNumbers();
 			updateMoveHistory();
 		}
 		

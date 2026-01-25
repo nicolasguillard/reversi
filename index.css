@@ -840,6 +840,30 @@ body.light .row-label {
 	pointer-events: none;
 }
 
+.move-number-indicator {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 50%;
+	height: 50%;
+	transform: translate(-50%, -50%);
+	background-color: #0a880a;
+	border-radius: 50%;
+	z-index: 15;
+	pointer-events: none;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-family: monospace;
+	font-weight: bold;
+	color: #000;
+	font-size: 1.5vmin;
+}
+
+#grid.hide-move-numbers .move-number-indicator {
+	display: none !important;
+}
+
 #navigation-btns {
 	display: none;
 	flex-direction: row;
@@ -967,5 +991,40 @@ body.light .row-label {
 }
 
 body.light .show-moves-container label {
+	color: black;
+}
+
+.show-numbers-container {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	gap: 20px;
+	margin-top: 12px;
+	justify-content: center;
+	font-size: 14px;
+	flex-wrap: wrap;
+}
+
+.show-numbers-container .show-moves-container {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.show-numbers-container input[type="checkbox"],
+.show-moves-container input[type="checkbox"] {
+	width: 18px;
+	height: 18px;
+	cursor: pointer;
+	accent-color: #008000;
+}
+
+.show-numbers-container label {
+	cursor: pointer;
+	user-select: none;
+	color: white;
+}
+
+body.light .show-numbers-container label {
 	color: black;
 }
