@@ -301,6 +301,25 @@ function initGrid() {
 	document.getElementById("showBlackMoveNumbers").addEventListener("change", (e) => {
 		updateMoveHistory();
 	});
+	document.getElementById("showFlippedBackground").addEventListener("change", (e) => {
+		// Mettre à jour l'affichage des jetons retournés selon l'état de la case
+		if (state.currentMoveIndex >= 0 && state.moves.length > 0) {
+			const currentMove = state.moves[state.currentMoveIndex];
+			if (currentMove && currentMove.flipped) {
+				if (e.target.checked) {
+					// Ajouter la classe flipped aux jetons retournés
+					logic.showFlipped(currentMove.flipped);
+				} else {
+					// Retirer la classe flipped de toutes les cases
+					for (let row = 0; row < 8; row++) {
+						for (let col = 0; col < 8; col++) {
+							squares[row][col].classList.remove('flipped');
+						}
+					}
+				}
+			}
+		}
+	});
 	
 	// Formater automatiquement la séquence de jeu
 	document.getElementById("gameSequence").addEventListener("blur", function() {
@@ -760,12 +779,15 @@ let logic = {
 			}
 		}
 		// Ensuite, ajouter la classe flipped aux jetons retournés
+		const showFlippedBackground = document.getElementById('showFlippedBackground')?.checked ?? true;
 		for (let id of move) {
 			let i = Math.floor(id / 10);
 			let j = id % 10;
 			this.setSquare(i, j, cp);
-			// Ajouter la classe flipped pour l'effet visuel
-			squares[i][j].classList.add('flipped');
+			// Ajouter la classe flipped pour l'effet visuel si activé
+			if (showFlippedBackground) {
+				squares[i][j].classList.add('flipped');
+			}
 		}
 	},
 	showFlipped(flippedArray) {
@@ -775,13 +797,16 @@ let logic = {
 				squares[row][col].classList.remove('flipped');
 			}
 		}
-		// Ajouter la classe flipped aux jetons spécifiés
-		for (let id of flippedArray) {
-			let i = Math.floor(id / 10);
-			let j = id % 10;
-			// Retirer la classe 'valid' si elle existe pour éviter les conflits visuels
-			squares[i][j].classList.remove('valid');
-			squares[i][j].classList.add('flipped');
+		// Ajouter la classe flipped aux jetons spécifiés si activé
+		const showFlippedBackground = document.getElementById('showFlippedBackground')?.checked ?? true;
+		if (showFlippedBackground) {
+			for (let id of flippedArray) {
+				let i = Math.floor(id / 10);
+				let j = id % 10;
+				// Retirer la classe 'valid' si elle existe pour éviter les conflits visuels
+				squares[i][j].classList.remove('valid');
+				squares[i][j].classList.add('flipped');
+			}
 		}
 	},
 	cpu() {
