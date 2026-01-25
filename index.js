@@ -509,6 +509,12 @@ let logic = {
 		turnDiv.innerText = "Black's Turn";
 		grid.classList.add("turn-" + (state.turn === 1 ? "Black" : "White"));
 		grid.classList.remove("turn-" + (state.turn === 2 ? "Black" : "White"));
+		// Initialiser l'affichage des numéros de coups selon l'état de la case à cocher
+		if (!document.getElementById("showMoveNumbers")?.checked) {
+			grid.classList.add("hide-move-numbers");
+		} else {
+			grid.classList.remove("hide-move-numbers");
+		}
 		this.updateNavigationButtons();
 		updateMoveHistory();
 		if (cpu === 1) {
@@ -779,7 +785,7 @@ let logic = {
 			}
 		}
 		// Ensuite, ajouter la classe flipped aux jetons retournés
-		const showFlippedBackground = document.getElementById('showFlippedBackground')?.checked ?? true;
+		const showFlippedBackground = document.getElementById('showFlippedBackground')?.checked ?? false;
 		for (let id of move) {
 			let i = Math.floor(id / 10);
 			let j = id % 10;
@@ -798,7 +804,7 @@ let logic = {
 			}
 		}
 		// Ajouter la classe flipped aux jetons spécifiés si activé
-		const showFlippedBackground = document.getElementById('showFlippedBackground')?.checked ?? true;
+		const showFlippedBackground = document.getElementById('showFlippedBackground')?.checked ?? false;
 		if (showFlippedBackground) {
 			for (let id of flippedArray) {
 				let i = Math.floor(id / 10);
