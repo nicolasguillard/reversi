@@ -469,6 +469,7 @@ body.light #error-message {
 	border-radius: 8px;
 	padding: 10px;
 	margin-top: 40px;
+	scroll-behavior: smooth;
 }
 
 .light #move-history {

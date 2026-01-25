@@ -379,6 +379,37 @@ function updateMoveHistory() {
 		
 		historyContent.appendChild(line);
 	}
+	
+	// Faire défiler automatiquement pour montrer le coup actuel
+	scrollToCurrentMove();
+}
+
+function scrollToCurrentMove() {
+	let historyContainer = document.getElementById("move-history");
+	let historyContent = document.getElementById("history-content");
+	
+	if (!historyContainer || !historyContent) return;
+	
+	// Si on est avant le premier coup, défiler tout en haut
+	if (state.currentMoveIndex < 0) {
+		historyContainer.scrollTop = 0;
+		return;
+	}
+	
+	// Trouver l'élément correspondant au coup actuel
+	let moveItems = historyContent.querySelectorAll(".move-item");
+	if (state.currentMoveIndex < moveItems.length) {
+		let currentMoveElement = moveItems[state.currentMoveIndex];
+		if (currentMoveElement) {
+			// Calculer la position pour centrer l'élément dans la vue
+			let elementTop = currentMoveElement.offsetTop;
+			let elementHeight = currentMoveElement.offsetHeight;
+			let containerHeight = historyContainer.clientHeight;
+			
+			// Défiler pour centrer l'élément (ou le montrer en bas si c'est près de la fin)
+			historyContainer.scrollTop = elementTop - containerHeight / 2 + elementHeight / 2;
+		}
+	}
 }
 
 let logic = {
