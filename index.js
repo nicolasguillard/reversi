@@ -297,6 +297,9 @@ function initGrid() {
 			grid.classList.remove("show-square-indices");
 		}
 	});
+	document.getElementById("showBlackMoveNumbers").addEventListener("change", (e) => {
+		updateMoveHistory();
+	});
 	
 	// Formater automatiquement la séquence de jeu
 	document.getElementById("gameSequence").addEventListener("blur", function() {
@@ -344,6 +347,7 @@ function updateMoveHistory() {
 	historyContent.innerHTML = "";
 	
 	let alphabets = ["A", "B", "C", "D", "E", "F", "G", "H"];
+	let showBlackMoveNumbers = document.getElementById("showBlackMoveNumbers").checked;
 	
 	// Parcourir l'historique des coups par paires
 	for (let i = 0; i < state.moves.length; i += 2) {
@@ -353,7 +357,13 @@ function updateMoveHistory() {
 		// Numéro du coup (commence à 1)
 		let moveNum = document.createElement("span");
 		moveNum.classList.add("move-number");
-		moveNum.textContent = Math.floor(i / 2) + 1 + ".";
+		if (showBlackMoveNumbers) {
+			// Afficher le numéro du coup noir (1, 3, 5, 7...)
+			moveNum.textContent = (i + 1) + ".";
+		} else {
+			// Afficher le numéro de ligne (1, 2, 3...)
+			moveNum.textContent = Math.floor(i / 2) + 1 + ".";
+		}
 		line.appendChild(moveNum);
 		
 		// Premier coup (Noir)
