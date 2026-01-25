@@ -734,6 +734,7 @@ let logic = {
 		updateMoveHistory();
 	},
 	updateNavigationButtons() {
+		let firstBtn = document.getElementById("first");
 		let prevBtn = document.getElementById("previous");
 		let nextBtn = document.getElementById("next");
 		let playReplayBtn = document.getElementById("play-replay");
@@ -745,8 +746,14 @@ let logic = {
 		// Vérifier si on est à la fin de l'historique
 		let isAtEnd = state.currentMoveIndex >= state.moves.length - 1;
 		
+		// Vérifier si on est au début de l'historique
+		let isAtStart = state.currentMoveIndex < 0;
+		
+		// First: désactivé si au début de l'historique ou tour CPU
+		if (firstBtn) firstBtn.disabled = isAtStart || isCpuTurn;
+		
 		// Previous: désactivé si au début de l'historique ou tour CPU
-		prevBtn.disabled = state.currentMoveIndex < 0 || isCpuTurn;
+		prevBtn.disabled = isAtStart || isCpuTurn;
 		
 		// Next: désactivé si à la fin de l'historique ou tour CPU
 		nextBtn.disabled = isAtEnd || isCpuTurn;

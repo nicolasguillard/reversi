@@ -914,6 +914,7 @@ body.light .row-label {
 }
 
 #undo:disabled,
+#first:disabled,
 #previous:disabled,
 #next:disabled,
 #play-replay:disabled,
