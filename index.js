@@ -265,6 +265,29 @@ function initGrid() {
 			grid.classList.add("hide-valid-moves");
 		}
 	});
+	document.getElementById("showLastMove").addEventListener("change", (e) => {
+		if (e.target.checked) {
+			grid.classList.remove("hide-last-move");
+		} else {
+			grid.classList.add("hide-last-move");
+		}
+	});
+	
+	// Formater automatiquement la séquence de jeu
+	document.getElementById("gameSequence").addEventListener("blur", function() {
+		let value = this.value.trim();
+		if (value) {
+			// Enlever tous les espaces et séparateurs existants
+			let cleanValue = value.toUpperCase().replace(/[\s,;]+/g, '');
+			
+			// Vérifier si la chaîne contient que des caractères valides (A-H et 1-8)
+			if (/^[A-H1-8]+$/.test(cleanValue)) {
+				// Insérer un espace tous les 2 caractères
+				let formatted = cleanValue.match(/.{1,2}/g).join(' ');
+				this.value = formatted;
+			}
+		}
+	});
 }
 
 function showModal(el) {
@@ -675,6 +698,28 @@ let logic = {
 			this.inputHandler(Math.floor(move / 10), move % 10);
 		}, 1500);
 	},
+	updateLastMoveIndicator() {
+		// Retirer tous les indicateurs de dernier coup
+		for (let row = 0; row < 8; row++) {
+			for (let col = 0; col < 8; col++) {
+				let indicator = squares[row][col].querySelector('.last-move-indicator');
+				if (indicator) {
+					indicator.remove();
+				}
+			}
+		}
+		
+		// Ajouter l'indicateur sur le dernier coup joué
+		if (state.currentMoveIndex >= 0 && state.currentMoveIndex < state.moves.length) {
+			let currentMove = state.moves[state.currentMoveIndex];
+			// Vérifier que ce n'est pas un coup passé (Z0)
+			if (currentMove.position.i !== -1 && currentMove.position.j !== -1) {
+				let indicator = document.createElement('div');
+				indicator.classList.add('last-move-indicator');
+				squares[currentMove.position.i][currentMove.position.j].appendChild(indicator);
+			}
+		}
+	},
 	previous() {
 		if (state.currentMoveIndex < 0) return;
 		let r = state.moves[state.currentMoveIndex];
@@ -683,6 +728,7 @@ let logic = {
 		state.currentMoveIndex--;
 		checkdom();
 		this.validMoves();
+		this.updateLastMoveIndicator();
 		this.updateNavigationButtons();
 		updateMoveHistory();
 	},
@@ -730,6 +776,7 @@ let logic = {
 		
 		checkdom();
 		this.validMoves();
+		this.updateLastMoveIndicator();
 		this.updateNavigationButtons();
 		updateMoveHistory();
 	},
@@ -797,6 +844,7 @@ let logic = {
 		
 		checkdom();
 		this.validMoves();
+		this.updateLastMoveIndicator();
 		this.updateNavigationButtons();
 		updateMoveHistory();
 	},
@@ -1017,6 +1065,7 @@ let logic = {
 		state.moves = savedMoves;
 		state.currentMoveIndex = -1;
 		updateMoveHistory();
+		this.updateLastMoveIndicator();
 		
 		document.getElementById("play-replay").style.display = "inline-block";
 		document.getElementById("pause-replay").style.display = "none";
@@ -1050,6 +1099,7 @@ let logic = {
 			
 			checkdom();
 			this.validMoves();
+			this.updateLastMoveIndicator();
 			updateMoveHistory();
 		}
 		

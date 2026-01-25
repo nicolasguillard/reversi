@@ -525,7 +525,7 @@ body.light #error-message {
 }
 
 .move-black {
-	background-color: #222;
+	background-color: #555;
 	color: #fff;
 }
 
@@ -535,7 +535,7 @@ body.light #error-message {
 }
 
 .move-white {
-	background-color: #777;
+	background-color: #aaa;
 	color: #fff;
 }
 
@@ -806,6 +806,10 @@ body.light .row-label {
 	opacity: 0 !important;
 }
 
+#grid.hide-last-move .last-move-indicator {
+	display: none !important;
+}
+
 .turn-Black .valid::before {
 	opacity: 0.4;
 	transform: scaleY(1);
@@ -838,6 +842,16 @@ body.light .row-label {
 	justify-content: center;
 	align-items: center;
 	margin-top: 10px;
+}
+
+#navigation-btns .btn.nav-btn {
+	min-width: 50px;
+	width: 50px;
+	height: 40px;
+	padding: 5px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 }
 
 #first {
