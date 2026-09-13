@@ -52,10 +52,12 @@ test.describe("Board display checkboxes", () => {
 		await expect(page.locator("#showSquareIndices")).not.toBeChecked();
 		await expect(grid).not.toHaveClass(/show-square-indices/);
 
-		// A1 -> index 1, H8 -> index 64, B1 -> index 9 (column-major: (col * 8) + row + 1)
+		// A1 -> index 1, H1 -> index 8, A2 -> index 9, H8 -> index 64
+		// (row-major, left-to-right then top-to-bottom: (row * 8) + col + 1)
 		await expect(page.locator(`#${squareId(0, 0)} .square-index`)).toHaveText("1");
+		await expect(page.locator(`#${squareId(0, 7)} .square-index`)).toHaveText("8");
+		await expect(page.locator(`#${squareId(1, 0)} .square-index`)).toHaveText("9");
 		await expect(page.locator(`#${squareId(7, 7)} .square-index`)).toHaveText("64");
-		await expect(page.locator(`#${squareId(0, 1)} .square-index`)).toHaveText("9");
 
 		await page.check("#showSquareIndices");
 		await expect(grid).toHaveClass(/show-square-indices/);

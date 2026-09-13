@@ -92,10 +92,10 @@ function initGrid() {
 			element.id = `${alphabets[j]}${i + 1}`;
 			element.classList.add("square");
 			
-			// Ajouter l'indice de case (A1=1, A2=2... H8=64) column-major
+			// Ajouter l'indice de case (A1=1, B1=2... H1=8, A2=9... H8=64) row-major
 			let indexSpan = document.createElement("span");
 			indexSpan.classList.add("square-index");
-			indexSpan.textContent = (j * 8) + i + 1;
+			indexSpan.textContent = (i * 8) + j + 1;
 			element.appendChild(indexSpan);
 
 			element.addEventListener("click", () => {

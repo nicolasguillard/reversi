@@ -67,7 +67,7 @@ Affiche sur chaque case jouée le numéro d'ordre du coup (1, 2, 3…) jusqu'au 
 - Se met à jour automatiquement en cas de retour en arrière/avant dans l'historique (`updateMoveNumbers`), et interagit avec « Show last move » comme décrit ci-dessus.
 
 ### ☐ Show square indices (`showSquareIndices`)
-Affiche dans un coin de chaque case un indice numérique de 1 à 64 (numérotation par colonne : A1=1, A2=2 … A8=8, B1=9…).
+Affiche dans un coin de chaque case un indice numérique de 1 à 64 (numérotation par ligne, de gauche à droite puis de haut en bas : A1=1, B1=2 … H1=8, A2=9…).
 - Décochée par défaut.
 - Utile pour identifier une case par son numéro plutôt que par sa coordonnée (colonne/ligne), par exemple en référence à une notation externe.
 - N'a pas d'impact sur les autres indicateurs (dernier coup, numéro de coup) : ils peuvent tous être affichés simultanément.
