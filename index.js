@@ -630,11 +630,9 @@ let logic = {
 			return false;
 		}
 		if (validMoveCount === 0) {
-			if (state.wasLastTurnSkipped) {
-				this.endgame();
-				return false;
-			}
-			// Enregistrer un coup passé (Z0) dans l'historique seulement si on ne rejoue pas une séquence
+			// Enregistrer un coup passé (Z0) dans l'historique seulement si on ne rejoue pas une séquence.
+			// Fait avant le contrôle de fin de partie pour que le second Z0 consécutif (celui qui
+			// déclenche la fin de partie) soit lui aussi affiché, pas seulement le premier.
 			if (!isReplayingSequence) {
 				let current = JSON.parse(JSON.stringify(state.grid));
 				state.moves.push({
@@ -644,6 +642,10 @@ let logic = {
 				});
 				state.currentMoveIndex = state.moves.length - 1;
 				updateMoveHistory();
+			}
+			if (state.wasLastTurnSkipped) {
+				this.endgame();
+				return false;
 			}
 			state.wasLastTurnSkipped = true;
 			this.switchTurn();
@@ -1064,19 +1066,19 @@ let logic = {
 						
 						// Vérifier si le joueur suivant doit passer
 						while (Object.keys(state.validMoves).length === 0) {
-							// Vérifier si la partie est terminée
+							// Vérifier si la partie est terminée par un plateau plein
 							let emptyslots = 0;
 							for (let ii = 0; ii < 8; ii++) {
 								for (let jj = 0; jj < 8; jj++) {
 									if (state.grid[ii][jj] === 0) emptyslots++;
 								}
 							}
-							
-							if (emptyslots === 0 || wasLastTurnSkipped) {
-								// Partie terminée
+
+							if (emptyslots === 0) {
+								// Plateau plein : fin de partie naturelle, pas de passe à enregistrer
 								break;
 							}
-							
+
 							// Le joueur doit passer
 							let current = JSON.parse(JSON.stringify(state.grid));
 							allMoves.push({
@@ -1084,7 +1086,13 @@ let logic = {
 								turn: state.turn,
 								position: { i: -1, j: -1 }
 							});
-							
+
+							if (wasLastTurnSkipped) {
+								// Second Z0 consécutif : la partie est terminée, mais ce
+								// dernier passage doit quand même apparaître dans l'historique.
+								break;
+							}
+
 							wasLastTurnSkipped = true;
 							state.turn = state.turn === 1 ? 2 : 1;
 							this.calculateValidMoves();

@@ -47,24 +47,31 @@ async function getScores(page) {
 // Known-good full game sequences (regression fixtures), each paired with
 // the outcome produced by the current engine when replayed to the end.
 // See tests/README.md for how these were derived/verified.
+// `historyEntries` = total moves recorded in history (real moves + Z0 passes).
+// `trailingPasses` = consecutive Z0 entries at the very end of that history:
+// 2 means the game ended because both players passed in a row (possible
+// whenever the board isn't full - including full elimination, where the
+// empty-of-disks player can never move again either); 0 means it ended by
+// filling the board instead, with no final pass to record.
+// See tests/derive-sequence-outcomes.js for how these were computed.
 const KNOWN_SEQUENCES = [
 	{
 		name: "sequence A (Black nearly wiped out)",
 		sequence:
 			"F5F6E6F4E3D6E7F3G6H6C3D3G5H5E2D8C7C6C4C8G3E1D2D1C5G4H4H3C2B4F1G1C1B1D7E8F8G8F7F2B3A3B6A6B5A5A4G7B7B8A2A1B2",
-		expected: { black: 1, white: 56, empty: 7, winner: "White" },
+		expected: { black: 1, white: 56, empty: 7, winner: "White", historyEntries: 56, trailingPasses: 2 },
 	},
 	{
 		name: "sequence B (full board)",
 		sequence:
 			"F5F6E6F4C3C4F3D3E3E2E1D2C5G3H3C2D1C1B1B3A3B4G6F2A4B5A5A6A7B6F1G4H4D6C6B2A1A2A8B7B8C8C7D7D8E8E7F8F7G8H8G7H7G5H6H5H2G2G1H1",
-		expected: { black: 23, white: 41, empty: 0, winner: "White" },
+		expected: { black: 23, white: 41, empty: 0, winner: "White", historyEntries: 65, trailingPasses: 0 },
 	},
 	{
 		name: "sequence C (Black eliminated early)",
 		sequence:
 			"F5D6C5F4F3E3D7G4H3G3E2F2G1D3H4D1D2F1F6H1G5E1G2H5H6H2C7E7H7E6G6B7C1C2F7G7C4B3H8E8G8F8C6C3A3A7",
-		expected: { black: 0, white: 50, empty: 14, winner: "White" },
+		expected: { black: 0, white: 50, empty: 14, winner: "White", historyEntries: 56, trailingPasses: 2 },
 	},
 ];
 

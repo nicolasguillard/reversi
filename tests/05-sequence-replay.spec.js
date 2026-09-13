@@ -1,5 +1,5 @@
 const { test, expect } = require("./fixtures");
-const { startSequence, getScores, squareId, KNOWN_SEQUENCES } = require("./helpers");
+const { startSequence, startTwoPlayerGame, getScores, squareId, KNOWN_SEQUENCES } = require("./helpers");
 
 test.describe("Game sequence replay - known fixtures", () => {
 	for (const { name, sequence, expected } of KNOWN_SEQUENCES) {
@@ -41,6 +41,56 @@ test.describe("Game sequence replay - known fixtures", () => {
 
 		expect(await getScores(page)).toEqual({ black: 2, white: 2 });
 		await expect(page.locator("#history-content .move-item")).toHaveCount(historyCountAfterFirst);
+	});
+});
+
+test.describe("Game sequence replay - trailing Z0 passes at game end", () => {
+	// A game only ends without filling the board when both players pass in a
+	// row (including full elimination, since a color with 0 disks can never
+	// move again either) - both consecutive Z0 passes must show up in the
+	// move history, not just the first one.
+	for (const { name, sequence, expected } of KNOWN_SEQUENCES) {
+		test(`${name}: history ends with exactly ${expected.trailingPasses} Z0 pass(es)`, async ({ page }) => {
+			await startSequence(page, sequence);
+
+			const moveItems = page.locator("#history-content .move-item");
+			await expect(moveItems).toHaveCount(expected.historyEntries);
+
+			for (let offset = 0; offset < expected.trailingPasses; offset++) {
+				const item = moveItems.nth(expected.historyEntries - 1 - offset);
+				await expect(item).toHaveClass(/move-pass/);
+				await expect(item).toHaveText("Z0");
+			}
+
+			// Whichever entry precedes the trailing passes (or the very last
+			// entry, when there are none) must be a real move, not another pass.
+			const lastNonTrailingIndex = expected.historyEntries - 1 - expected.trailingPasses;
+			if (lastNonTrailingIndex >= 0) {
+				await expect(moveItems.nth(lastNonTrailingIndex)).not.toHaveClass(/move-pass/);
+			}
+		});
+	}
+
+	test("the same double-pass ending is recorded in live (non-sequence) play too", async ({ page }) => {
+		// prepareSequence() and normal gameplay's validMoves() are two separate
+		// code paths that each record Z0 passes independently - replay sequence
+		// A's moves as direct board clicks in an ordinary 2-player game (not
+		// through the "Game Sequence" textarea) to exercise the other one.
+		const { sequence, expected } = KNOWN_SEQUENCES[0];
+		const moves = sequence.match(/.{1,2}/g);
+
+		await startTwoPlayerGame(page);
+		for (const move of moves) {
+			await page.click(`#${move}`);
+		}
+
+		expect(await getScores(page)).toEqual({ black: expected.black, white: expected.white });
+
+		const moveItems = page.locator("#history-content .move-item");
+		await expect(moveItems).toHaveCount(expected.historyEntries);
+		await expect(moveItems.nth(expected.historyEntries - 1)).toHaveClass(/move-pass/);
+		await expect(moveItems.nth(expected.historyEntries - 2)).toHaveClass(/move-pass/);
+		await expect(moveItems.nth(expected.historyEntries - 3)).not.toHaveClass(/move-pass/);
 	});
 });
 
