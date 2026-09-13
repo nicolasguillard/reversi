@@ -1,1 +1,6 @@
 icon.kra
+
+# Playwright / npm
+node_modules/
+test-results/
+playwright-report/

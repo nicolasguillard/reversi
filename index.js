@@ -470,7 +470,7 @@ function scrollToCurrentMove() {
 let logic = {
 	setup(cpu = 0) {
 		state = {
-			grid: new Array(8),
+			grid: ReversiEngine.createEmptyGrid(),
 			moves: [],
 			isPaused: false,
 			focused: {
@@ -484,9 +484,6 @@ let logic = {
 			cpu: cpu,
 			currentMoveIndex: -1,
 		};
-		for (let i = 0; i < 8; i++) {
-			state.grid[i] = new Array(8).fill(0);
-		}
 		// Nettoyer tous les indicateurs de dernier coup et les numéros
 		for (let row = 0; row < 8; row++) {
 			for (let col = 0; col < 8; col++) {
@@ -622,32 +619,13 @@ let logic = {
 				squares[Math.floor(id / 10)][id % 10].classList.remove("valid");
 			}
 		}
-		let cp = state.turn;
-		state.validMoves = {};
-		let validMoveCount = 0;
-		let emptyslots = 0;
-		state.p1 = 0;
-		state.p2 = 0;
-		for (let i = 0; i < 8; i++) {
-			for (let j = 0; j < 8; j++) {
-				if (state.grid[i][j] === 0) {
-					emptyslots++;
-					let r = this.check(i, j, cp);
-					if (r.size > 0) {
-						state.validMoves[i * 10 + j] = r;
-						validMoveCount++;
-					}
-				}
-				if (state.grid[i][j] === 1) {
-					state.p1++;
-				}
-				if (state.grid[i][j] === 2) {
-					state.p2++;
-				}
-			}
-		}
+		state.validMoves = ReversiEngine.getValidMoves(state.grid, state.turn);
+		let validMoveCount = Object.keys(state.validMoves).length;
+		let counts = ReversiEngine.countDisks(state.grid);
+		state.p1 = counts.p1;
+		state.p2 = counts.p2;
 		this.updateScore();
-		if (state.p1 === 0 || state.p2 === 0 || emptyslots === 0) {
+		if (state.p1 === 0 || state.p2 === 0 || counts.empty === 0) {
 			this.endgame();
 			return false;
 		}
@@ -676,106 +654,6 @@ let logic = {
 			});
 		}
 		return true;
-	},
-	check(i, j, cp) {
-		return new Set([
-			...this.cRL(i, j, cp),
-			...this.cRR(i, j, cp),
-			...this.cCT(i, j, cp),
-			...this.cCB(i, j, cp),
-			...this.cDTL(i, j, cp),
-			...this.cDTR(i, j, cp),
-			...this.cDBL(i, j, cp),
-			...this.cDBR(i, j, cp),
-		]);
-	},
-	cRL(i, j, cp) {
-		if (j === 0) return [];
-		if (state.grid[i][j - 1] !== (cp === 1 ? 2 : 1)) return [];
-		let eps = [];
-		for (let n = j - 1; n >= 0; n--) {
-			if (state.grid[i][n] === 0) return [];
-			if (state.grid[i][n] === cp) return eps;
-			eps.push(i * 10 + n);
-		}
-		return [];
-	},
-	cRR(i, j, cp) {
-		if (j === 7) return [];
-		if (state.grid[i][j + 1] !== (cp === 1 ? 2 : 1)) return [];
-		let eps = [];
-		for (let n = j + 1; n < 8; n++) {
-			if (state.grid[i][n] === 0) return [];
-			if (state.grid[i][n] === cp) return eps;
-			eps.push(i * 10 + n);
-		}
-		return [];
-	},
-	cCT(i, j, cp) {
-		if (i === 0) return [];
-		if (state.grid[i - 1][j] !== (cp === 1 ? 2 : 1)) return [];
-		let eps = [];
-		for (let n = i - 1; n >= 0; n--) {
-			if (state.grid[n][j] === 0) return [];
-			if (state.grid[n][j] === cp) return eps;
-			eps.push(n * 10 + j);
-		}
-		return [];
-	},
-	cCB(i, j, cp) {
-		if (i === 7) return [];
-		if (state.grid[i + 1][j] !== (cp === 1 ? 2 : 1)) return [];
-		let eps = [];
-		for (let n = i + 1; n < 8; n++) {
-			if (state.grid[n][j] === 0) return [];
-			if (state.grid[n][j] === cp) return eps;
-			eps.push(n * 10 + j);
-		}
-		return [];
-	},
-	cDTL(i, j, cp) {
-		if (i === 0 || j === 0) return [];
-		if (state.grid[i - 1][j - 1] !== (cp === 1 ? 2 : 1)) return [];
-		let eps = [];
-		for (let n = i - 1, m = j - 1; n >= 0 && m >= 0; n--, m--) {
-			if (state.grid[n][m] === 0) return [];
-			if (state.grid[n][m] === cp) return eps;
-			eps.push(n * 10 + m);
-		}
-		return [];
-	},
-	cDTR(i, j, cp) {
-		if (i === 0 || j === 7) return [];
-		if (state.grid[i - 1][j + 1] !== (cp === 1 ? 2 : 1)) return [];
-		let eps = [];
-		for (let n = i - 1, m = j + 1; n >= 0 && m < 8; n--, m++) {
-			if (state.grid[n][m] === 0) return [];
-			if (state.grid[n][m] === cp) return eps;
-			eps.push(n * 10 + m);
-		}
-		return [];
-	},
-	cDBL(i, j, cp) {
-		if (i === 7 || j === 0) return [];
-		if (state.grid[i + 1][j - 1] !== (cp === 1 ? 2 : 1)) return [];
-		let eps = [];
-		for (let n = i + 1, m = j - 1; n < 8 && m >= 0; n++, m--) {
-			if (state.grid[n][m] === 0) return [];
-			if (state.grid[n][m] === cp) return eps;
-			eps.push(n * 10 + m);
-		}
-		return [];
-	},
-	cDBR(i, j, cp) {
-		if (i === 7 || j === 7) return [];
-		if (state.grid[i + 1][j + 1] !== (cp === 1 ? 2 : 1)) return [];
-		let eps = [];
-		for (let n = i + 1, m = j + 1; n < 8 && m < 8; n++, m++) {
-			if (state.grid[n][m] === 0) return [];
-			if (state.grid[n][m] === cp) return eps;
-			eps.push(n * 10 + m);
-		}
-		return [];
 	},
 	react(cp, move = new Set()) {
 		// D'abord, retirer la classe flipped de toutes les cases
@@ -949,7 +827,7 @@ let logic = {
 				moveSet = new Set(nextMove.flipped);
 			} else {
 				// Calculer les jetons retournés si non stockés
-				moveSet = this.check(nextMove.position.i, nextMove.position.j, nextMove.turn);
+				moveSet = ReversiEngine.check(state.grid, nextMove.position.i, nextMove.position.j, nextMove.turn);
 			}
 			
 			// Appliquer le coup et l'état suivant
@@ -1027,7 +905,7 @@ let logic = {
 			if (move.flipped && move.flipped.length > 0) {
 				moveSet = new Set(move.flipped);
 			} else {
-				moveSet = this.check(move.position.i, move.position.j, move.turn);
+				moveSet = ReversiEngine.check(state.grid, move.position.i, move.position.j, move.turn);
 			}
 			
 			// Trouver l'état après le coup en regardant le coup suivant
@@ -1286,30 +1164,12 @@ let logic = {
 				squares[Math.floor(id / 10)][id % 10].classList.remove("valid");
 			}
 		}
-		let cp = state.turn;
-		state.validMoves = {};
-		let validMoveCount = 0;
-		state.p1 = 0;
-		state.p2 = 0;
-		for (let i = 0; i < 8; i++) {
-			for (let j = 0; j < 8; j++) {
-				if (state.grid[i][j] === 0) {
-					let r = this.check(i, j, cp);
-					if (r.size > 0) {
-						state.validMoves[i * 10 + j] = r;
-						validMoveCount++;
-					}
-				}
-				if (state.grid[i][j] === 1) {
-					state.p1++;
-				}
-				if (state.grid[i][j] === 2) {
-					state.p2++;
-				}
-			}
-		}
+		state.validMoves = ReversiEngine.getValidMoves(state.grid, state.turn);
+		let counts = ReversiEngine.countDisks(state.grid);
+		state.p1 = counts.p1;
+		state.p2 = counts.p2;
 		this.updateScore();
-		return validMoveCount;
+		return Object.keys(state.validMoves).length;
 	},
 	goToFirst() {
 		// Réinitialiser à l'état initial
@@ -1351,7 +1211,7 @@ let logic = {
 			// Appliquer le dernier coup pour obtenir l'état final
 			if (lastMove.position.i !== -1 && lastMove.position.j !== -1) {
 				// Coup normal (pas un passage)
-				let move = this.check(lastMove.position.i, lastMove.position.j, lastMove.turn);
+				let move = ReversiEngine.check(state.grid, lastMove.position.i, lastMove.position.j, lastMove.turn);
 				this.setSquare(lastMove.position.i, lastMove.position.j, lastMove.turn);
 				this.react(lastMove.turn, move);
 				state.turn = lastMove.turn === 1 ? 2 : 1;
@@ -1379,6 +1239,9 @@ if (localStorage.getItem("lastGame")) {
 	state = JSON.parse(localStorage.getItem("lastGame"));
 	checkdom();
 	logic.validMoves();
+	logic.updateMoveNumbers();
+	logic.updateLastMoveIndicator();
+	updateMoveHistory();
 	document.body.classList.add("game-active");
 } else {
 	document.body.classList.add("setup-active");
