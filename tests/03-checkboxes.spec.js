@@ -1,5 +1,5 @@
 const { test, expect } = require("./fixtures");
-const { startTwoPlayerGame, playFirstValidMove, squareId } = require("./helpers");
+const { startTwoPlayerGame, playFirstValidMove, squareId, KNOWN_SEQUENCES } = require("./helpers");
 
 test.describe("Board display checkboxes", () => {
 	test("showValidMoves toggles the hide-valid-moves class on the grid", async ({ page }) => {
@@ -64,6 +64,29 @@ test.describe("Board display checkboxes", () => {
 
 		await page.uncheck("#showSquareIndices");
 		await expect(grid).not.toHaveClass(/show-square-indices/);
+	});
+
+	test("square indices never render above the end-of-game modal", async ({ page }) => {
+		// Regression test: .square-index used to share the same z-index (25) as
+		// .modal, so once the victory modal appeared, index labels from later
+		// in the DOM painted on top of it instead of staying behind it.
+		await startTwoPlayerGame(page);
+		await page.check("#showSquareIndices");
+
+		// Play sequence B live (not through the "Game Sequence" textarea, which
+		// suppresses the victory modal) - it's a verified full game ending
+		// with a completely filled board, so every square carries an index.
+		const { sequence } = KNOWN_SEQUENCES[1];
+		for (const move of sequence.match(/.{1,2}/g)) {
+			await page.click(`#${move}`);
+		}
+		await expect(page.locator("#victory")).toHaveClass(/visible/);
+
+		const zIndices = await page.evaluate(() => ({
+			modal: Number(getComputedStyle(document.getElementById("victory")).zIndex),
+			squareIndex: Number(getComputedStyle(document.querySelector(".square-index")).zIndex),
+		}));
+		expect(zIndices.squareIndex).toBeLessThan(zIndices.modal);
 	});
 
 	test("showMonoMoveIndices switches the move-history numbering scheme", async ({ page }) => {

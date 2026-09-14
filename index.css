@@ -1057,7 +1057,7 @@ body.light .show-checkboxes-container label {
 	font-weight: bold;
 	color: #000;
 	display: none;
-	z-index: 25;
+	z-index: 10;
 	pointer-events: none;
 	font-family: monospace;
 }
