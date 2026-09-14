@@ -98,4 +98,22 @@ test.describe("Board display checkboxes", () => {
 		await page.uncheck("#showFlippedBackground");
 		await expect(page.locator(".flipped")).toHaveCount(0);
 	});
+
+	test("starting a new game clears flipped-disk highlighting left over from the previous game", async ({
+		page,
+	}) => {
+		await startTwoPlayerGame(page);
+		await page.check("#showFlippedBackground");
+		await page.click(`#${squareId(2, 3)}`); // D3, flips D4
+		await expect(page.locator(`#${squareId(3, 3)}`)).toHaveClass(/flipped/);
+
+		await page.click("#stop");
+		await expect(page.locator("body")).toHaveClass(/setup-active/);
+
+		// The checkbox itself stays checked across the screen transition -
+		// starting the new game must clear the stale highlight on its own.
+		await startTwoPlayerGame(page);
+		await expect(page.locator("#showFlippedBackground")).toBeChecked();
+		await expect(page.locator(".flipped")).toHaveCount(0);
+	});
 });

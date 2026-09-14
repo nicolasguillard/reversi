@@ -484,7 +484,8 @@ let logic = {
 			cpu: cpu,
 			currentMoveIndex: -1,
 		};
-		// Nettoyer tous les indicateurs de dernier coup et les numéros
+		// Nettoyer tous les indicateurs de dernier coup, les numéros et le
+		// surlignage des jetons retournés d'une éventuelle partie précédente
 		for (let row = 0; row < 8; row++) {
 			for (let col = 0; col < 8; col++) {
 				let indicator = squares[row][col].querySelector('.last-move-indicator');
@@ -495,6 +496,7 @@ let logic = {
 				if (numberIndicator) {
 					numberIndicator.remove();
 				}
+				squares[row][col].classList.remove('flipped');
 			}
 		}
 		this.setSquare(3, 3, 2);
