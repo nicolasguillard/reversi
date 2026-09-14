@@ -298,7 +298,7 @@ function initGrid() {
 			grid.classList.remove("show-square-indices");
 		}
 	});
-	document.getElementById("showBlackMoveNumbers").addEventListener("change", (e) => {
+	document.getElementById("showMonoMoveIndices").addEventListener("change", (e) => {
 		updateMoveHistory();
 	});
 	document.getElementById("showFlippedBackground").addEventListener("change", (e) => {
@@ -362,22 +362,39 @@ function checkdom() {
 	grid.classList.remove("turn-" + (state.turn === 2 ? "Black" : "White"));
 }
 
+// Ré-applique sur #grid les classes CSS pilotées par les cases à cocher
+// d'affichage, à partir de leur état "checked" actuel. Un simple rechargement
+// de page repart d'un #grid sans aucune classe (le DOM est recréé), donc ce
+// réalignement est nécessaire aussi bien au tout premier "Start!" qu'à la
+// restauration d'une partie sauvegardée après reload - sans quoi l'affichage
+// (ex: numéros de coups) ne correspond plus à l'état réel des cases à cocher.
+function syncBoardDisplayToggles() {
+	const applyToggle = (checkboxId, className, hideWhenChecked) => {
+		let checked = document.getElementById(checkboxId)?.checked ?? false;
+		grid.classList.toggle(className, hideWhenChecked ? !checked : checked);
+	};
+	applyToggle("showValidMoves", "hide-valid-moves", true);
+	applyToggle("showLastMove", "hide-last-move", true);
+	applyToggle("showMoveNumbers", "hide-move-numbers", true);
+	applyToggle("showSquareIndices", "show-square-indices", false);
+}
+
 function updateMoveHistory() {
 	let historyContent = document.getElementById("history-content");
 	historyContent.innerHTML = "";
 	
 	let alphabets = ["A", "B", "C", "D", "E", "F", "G", "H"];
-	let showBlackMoveNumbers = document.getElementById("showBlackMoveNumbers").checked;
-	
+	let showMonoMoveIndices = document.getElementById("showMonoMoveIndices").checked;
+
 	// Parcourir l'historique des coups par paires
 	for (let i = 0; i < state.moves.length; i += 2) {
 		let line = document.createElement("div");
 		line.classList.add("history-line");
-		
+
 		// Numéro du coup (commence à 1)
 		let moveNum = document.createElement("span");
 		moveNum.classList.add("move-number");
-		if (showBlackMoveNumbers) {
+		if (showMonoMoveIndices) {
 			// Afficher le numéro du coup noir (1, 3, 5, 7...)
 			moveNum.textContent = (i + 1) + ".";
 		} else {
@@ -508,12 +525,8 @@ let logic = {
 		turnDiv.innerText = "Black's Turn";
 		grid.classList.add("turn-" + (state.turn === 1 ? "Black" : "White"));
 		grid.classList.remove("turn-" + (state.turn === 2 ? "Black" : "White"));
-		// Initialiser l'affichage des numéros de coups selon l'état de la case à cocher
-		if (!document.getElementById("showMoveNumbers")?.checked) {
-			grid.classList.add("hide-move-numbers");
-		} else {
-			grid.classList.remove("hide-move-numbers");
-		}
+		// Réaligner les classes d'affichage (numéros de coups, etc.) sur l'état des cases à cocher
+		syncBoardDisplayToggles();
 		this.updateNavigationButtons();
 		updateMoveHistory();
 		if (cpu === 1) {
@@ -1248,6 +1261,7 @@ initGrid();
 if (localStorage.getItem("lastGame")) {
 	state = JSON.parse(localStorage.getItem("lastGame"));
 	checkdom();
+	syncBoardDisplayToggles();
 	logic.validMoves();
 	logic.updateMoveNumbers();
 	logic.updateLastMoveIndicator();
