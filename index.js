@@ -20,6 +20,13 @@ let isReplayingSequence = false;
 let replayTimeouts = [];
 let currentSequence = "";
 let isPaused = false;
+// True only while a real move is being played live (human click or CPU move,
+// both funnel through inputHandler()) and its consequences (forced passes)
+// are being resolved. Navigating history (previous/next/goToFirst/...) also
+// recomputes valid moves for a given position via validMoves(), but must
+// never record a new Z0 pass into state.moves - only genuine live progress
+// should. See validMoves() for how this flag gates that side effect.
+let isAdvancingLiveTurn = false;
 
 if (localStorage.getItem("theme")) {
 	darkmode = localStorage.getItem("theme") === "dark" ? true : false;
@@ -563,7 +570,9 @@ let logic = {
 			this.react(state.turn, move);
 			this.updateMoveNumbers();
 			this.updateLastMoveIndicator();
+			isAdvancingLiveTurn = true;
 			this.switchTurn();
+			isAdvancingLiveTurn = false;
 			this.updateScore();
 			updateMoveHistory();
 		}
@@ -612,7 +621,7 @@ let logic = {
 		updateMoveHistory();
 		localStorage.setItem("lastGame", JSON.stringify(state));
 	},
-	endgame() {
+	setEndgameText() {
 		if (state.p1 > state.p2) {
 			turnDiv.innerText = winner.innerText = "Black Won!";
 		}
@@ -622,6 +631,9 @@ let logic = {
 		if (state.p1 === state.p2) {
 			turnDiv.innerText = winner.innerText = "It's a Tie!";
 		}
+	},
+	endgame() {
+		this.setEndgameText();
 		// Ne pas afficher le modal victory si une séquence est rejouée
 		if (!isReplayingSequence) {
 			showModal(victory);
@@ -641,35 +653,63 @@ let logic = {
 		state.p2 = counts.p2;
 		this.updateScore();
 		if (state.p1 === 0 || state.p2 === 0 || counts.empty === 0) {
-			this.endgame();
+			// Reflète le texte de fin de partie même en pure navigation (ex: on
+			// revient sur la position finale d'une partie déjà terminée), mais
+			// ne finalise (modal, purge du localStorage) que si on fait
+			// vraiment progresser la partie en direct.
+			this.setEndgameText();
+			if (isAdvancingLiveTurn) {
+				this.endgame();
+			}
 			return false;
 		}
 		if (validMoveCount === 0) {
-			// Enregistrer un coup passé (Z0) dans l'historique seulement si on ne rejoue pas une séquence.
-			// Fait avant le contrôle de fin de partie pour que le second Z0 consécutif (celui qui
-			// déclenche la fin de partie) soit lui aussi affiché, pas seulement le premier.
-			if (!isReplayingSequence) {
-				let current = JSON.parse(JSON.stringify(state.grid));
-				state.moves.push({
-					grid: current,
-					turn: state.turn,
-					position: { i: -1, j: -1 } // Position spéciale pour indiquer un coup passé
-				});
-				state.currentMoveIndex = state.moves.length - 1;
-				updateMoveHistory();
+			if (isAdvancingLiveTurn) {
+				// Progression en direct uniquement : on enregistre la passe (Z0)
+				// puis on résout récursivement le joueur suivant via switchTurn(),
+				// qui enregistrera lui aussi son propre Z0 s'il est bloqué - c'est
+				// ce qui produit les deux Z0 consécutifs en fin de partie. Fait
+				// avant le contrôle wasLastTurnSkipped pour que le second Z0
+				// (celui qui déclenche la fin de partie) soit lui aussi affiché.
+				if (!isReplayingSequence) {
+					let current = JSON.parse(JSON.stringify(state.grid));
+					state.moves.push({
+						grid: current,
+						turn: state.turn,
+						position: { i: -1, j: -1 } // Position spéciale pour indiquer un coup passé
+					});
+					state.currentMoveIndex = state.moves.length - 1;
+					updateMoveHistory();
+				}
+				if (state.wasLastTurnSkipped) {
+					this.endgame();
+					return false;
+				}
+				state.wasLastTurnSkipped = true;
+				this.switchTurn();
+			} else {
+				// Navigation dans l'historique : ne jamais modifier state.moves ni
+				// state.turn ici. On se contente de refléter dans l'affichage le
+				// cas où la position est réellement bloquée pour les deux joueurs
+				// (calcul en lecture seule, sans mutation), ce qui arrive
+				// uniquement en tombant sur la position finale d'une partie
+				// terminée par double passe - les fonctions de navigation
+				// résolvent déjà les passes intermédiaires non terminales.
+				let opponentMoves = ReversiEngine.getValidMoves(state.grid, ReversiEngine.opponent(state.turn));
+				if (Object.keys(opponentMoves).length === 0) {
+					this.setEndgameText();
+				}
 			}
-			if (state.wasLastTurnSkipped) {
-				this.endgame();
-				return false;
-			}
-			state.wasLastTurnSkipped = true;
-			this.switchTurn();
-		} else {
-			state.wasLastTurnSkipped = false;
-			Object.keys(state.validMoves).forEach((id) => {
-				squares[Math.floor(id / 10)][id % 10].classList.add("valid");
-			});
+			// false regardless of how the branch above resolved: this specific
+			// call's state.turn had no valid move, which is what the caller
+			// (switchTurn()'s `ended`) needs to know to avoid overwriting a
+			// turn/winner text a deeper recursive call already set correctly.
+			return false;
 		}
+		state.wasLastTurnSkipped = false;
+		Object.keys(state.validMoves).forEach((id) => {
+			squares[Math.floor(id / 10)][id % 10].classList.add("valid");
+		});
 		return true;
 	},
 	react(cp, move = new Set()) {
@@ -1166,8 +1206,15 @@ let logic = {
 				this.showFlipped(lastMove.flipped);
 			}
 			
-			// Calculer et afficher les coups valides en dernier
+			// Calculer et afficher les coups valides en dernier. Traité comme de la
+			// progression en direct (et non de la navigation) : c'est la construction
+			// en une fois de l'état final définitif de la séquence, pas un simple
+			// affichage répété d'une position historique - la partie doit donc bien
+			// se finaliser (texte de fin, purge du localStorage) si elle est terminée.
+			// Le nouveau Z0 correspondant reste bloqué par ailleurs (isReplayingSequence).
+			isAdvancingLiveTurn = true;
 			this.validMoves();
+			isAdvancingLiveTurn = false;
 		} else {
 			state.currentMoveIndex = -1;
 		}

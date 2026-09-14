@@ -71,6 +71,50 @@ test.describe("Game sequence replay - trailing Z0 passes at game end", () => {
 		});
 	}
 
+	test("navigating move history after a live double-pass ending never adds extra Z0 entries", async ({
+		page,
+	}) => {
+		// Regression test: clicking a move-history entry (navigateToMove) calls
+		// validMoves() purely to recompute/display an already-recorded position
+		// - it must never also record a *new* Z0 pass, or repeatedly browsing
+		// back and forth across the game-ending passes would keep growing the
+		// history indefinitely.
+		//
+		// This has to be reproduced in a normal (non-sequence) game: sequence
+		// mode's #navigation-btns bar leaves isReplayingSequence true for the
+		// whole game, which already happens to block a stray push regardless
+		// of this bug. Clicking a history entry, on the other hand, works in
+		// any game mode and isReplayingSequence is false in a normal game -
+		// only the isAdvancingLiveTurn fix guards this path.
+		const { sequence, expected } = KNOWN_SEQUENCES[0]; // ends with 2 trailing Z0
+		const moves = sequence.match(/.{1,2}/g);
+
+		await startTwoPlayerGame(page);
+		for (const move of moves) {
+			await page.click(`#${move}`);
+		}
+
+		// The game genuinely ended live, so the victory modal is showing (as
+		// it should) - dismiss it, like a real user would, before browsing
+		// the history panel underneath.
+		await expect(page.locator("#victory")).toHaveClass(/visible/);
+		await page.click("#cancel");
+		await expect(page.locator("#victory")).not.toHaveClass(/visible/);
+
+		const moveItems = page.locator("#history-content .move-item");
+		await expect(moveItems).toHaveCount(expected.historyEntries);
+
+		// Click repeatedly on the two trailing Z0 entries, and the real move
+		// just before them, to exercise navigateToMove() around the ending.
+		for (let i = 0; i < 3; i++) {
+			await moveItems.nth(expected.historyEntries - 1).click();
+			await moveItems.nth(expected.historyEntries - 2).click();
+			await moveItems.nth(expected.historyEntries - 3).click();
+		}
+
+		await expect(page.locator("#history-content .move-item")).toHaveCount(expected.historyEntries);
+	});
+
 	test("the same double-pass ending is recorded in live (non-sequence) play too", async ({ page }) => {
 		// prepareSequence() and normal gameplay's validMoves() are two separate
 		// code paths that each record Z0 passes independently - replay sequence
@@ -85,6 +129,10 @@ test.describe("Game sequence replay - trailing Z0 passes at game end", () => {
 		}
 
 		expect(await getScores(page)).toEqual({ black: expected.black, white: expected.white });
+		// The last of the two recursive switchTurn() calls resolving the
+		// double pass sets this text via endgame() - a later, outer call in
+		// that same recursion must not overwrite it back to "X's Turn".
+		await expect(page.locator("#turn")).toHaveText(`${expected.winner} Won!`);
 
 		const moveItems = page.locator("#history-content .move-item");
 		await expect(moveItems).toHaveCount(expected.historyEntries);
