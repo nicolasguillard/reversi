@@ -843,12 +843,13 @@ let logic = {
 		checkdom();
 		this.validMoves();
 		
-		// Afficher les jetons retournés par le coup où on se trouve maintenant
+		// Afficher les jetons retournés par le coup où on se trouve maintenant.
+		// showFlipped() efface d'abord tout surlignage existant, donc l'appeler
+		// avec [] (coup passé, ou état initial) retire bien celui d'un coup
+		// précédent au lieu de le laisser affiché.
 		if (state.currentMoveIndex >= 0) {
 			let currentMove = state.moves[state.currentMoveIndex];
-			if (currentMove.flipped && currentMove.flipped.length > 0) {
-				this.showFlipped(currentMove.flipped);
-			}
+			this.showFlipped(currentMove.flipped || []);
 		} else {
 			// On est revenu à l'état initial, pas de jetons retournés à afficher
 			this.showFlipped([]);
@@ -876,6 +877,9 @@ let logic = {
 			} else {
 				state.turn = nextMove.turn === 1 ? 2 : 1;
 			}
+			// Un coup passé ne retourne aucun jeton : retirer le surlignage
+			// d'un éventuel coup précédent au lieu de le laisser affiché.
+			this.showFlipped([]);
 		} else {
 			// Coup normal - utiliser les jetons retournés stockés ou les calculer
 			let moveSet;
@@ -986,6 +990,9 @@ let logic = {
 				// Dernier coup et c'est un passage
 				state.turn = move.turn === 1 ? 2 : 1;
 			}
+			// Un coup passé ne retourne aucun jeton : retirer le surlignage
+			// d'un éventuel coup précédent au lieu de le laisser affiché.
+			this.showFlipped([]);
 		}
 		
 		checkdom();
@@ -1288,6 +1295,9 @@ let logic = {
 			} else {
 				// Coup passé - juste changer de tour
 				state.turn = lastMove.turn === 1 ? 2 : 1;
+				// Un coup passé ne retourne aucun jeton : retirer le surlignage
+				// d'un éventuel coup précédent au lieu de le laisser affiché.
+				this.showFlipped([]);
 			}
 			
 			checkdom();
