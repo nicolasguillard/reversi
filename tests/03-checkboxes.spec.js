@@ -139,4 +139,33 @@ test.describe("Board display checkboxes", () => {
 		await expect(page.locator("#showFlippedBackground")).toBeChecked();
 		await expect(page.locator(".flipped")).toHaveCount(0);
 	});
+
+	test("Undo updates the flipped-disk highlighting to the move it lands on", async ({ page }) => {
+		// Regression test: undo() never called react()/showFlipped() at all, so
+		// it left whatever the undone move had highlighted on screen instead of
+		// showing the flips of the move it actually lands on.
+		await startTwoPlayerGame(page);
+		await page.check("#showFlippedBackground");
+
+		await page.click(`#${squareId(2, 3)}`); // D3 (Black), flips D4
+		await expect(page.locator(`#${squareId(3, 3)}`)).toHaveClass(/flipped/); // D4
+		await expect(page.locator(".flipped")).toHaveCount(1);
+
+		await page.click(`#${squareId(2, 4)}`); // E3 (White), flips E4 - a different square
+		await expect(page.locator(`#${squareId(3, 4)}`)).toHaveClass(/flipped/); // E4
+		await expect(page.locator(`#${squareId(3, 3)}`)).not.toHaveClass(/flipped/); // D4 no longer marked
+		await expect(page.locator(".flipped")).toHaveCount(1);
+
+		await page.click("#undo");
+
+		// Back to right after D3: D4 should be highlighted again, not E4.
+		await expect(page.locator(`#${squareId(3, 3)}`)).toHaveClass(/flipped/); // D4
+		await expect(page.locator(`#${squareId(3, 4)}`)).not.toHaveClass(/flipped/); // E4
+		await expect(page.locator(".flipped")).toHaveCount(1);
+
+		await page.click("#undo");
+
+		// Back to the initial empty board: nothing should be highlighted.
+		await expect(page.locator(".flipped")).toHaveCount(0);
+	});
 });

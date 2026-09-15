@@ -615,6 +615,15 @@ let logic = {
 		state.currentMoveIndex = state.moves.length - 1;
 		checkdom();
 		this.validMoves();
+		// Afficher les jetons retournés par le coup où l'on se retrouve après
+		// l'annulation (aucun si un coup passé ou si on revient à l'état
+		// initial), au lieu de laisser affiché le surlignage du coup annulé.
+		if (state.currentMoveIndex >= 0) {
+			let currentMove = state.moves[state.currentMoveIndex];
+			this.showFlipped(currentMove.flipped || []);
+		} else {
+			this.showFlipped([]);
+		}
 		this.updateMoveNumbers();
 		this.updateLastMoveIndicator();
 		this.updateNavigationButtons();
