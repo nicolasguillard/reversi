@@ -2,6 +2,13 @@ if ("serviceWorker" in navigator) {
 	navigator.serviceWorker.register("./sw.js");
 }
 
+// state.cpu is 0 (no CPU, humans control both colors), 1 or 2 (the CPU
+// controls that single grid value, the human controls the other), or this
+// sentinel: the CPU controls both colors and plays itself ("0 players").
+// Distinct from the 0/1/2 grid values used elsewhere, so it's safe as a
+// state.cpu value without colliding with "which color" meanings.
+const CPU_BOTH_SIDES = 3;
+
 let grid = document.getElementById("grid");
 let turnDiv = document.getElementById("turn");
 let scorep1 = document.getElementById("scorep1");
@@ -27,6 +34,11 @@ let isPaused = false;
 // never record a new Z0 pass into state.moves - only genuine live progress
 // should. See validMoves() for how this flag gates that side effect.
 let isAdvancingLiveTurn = false;
+// Id of the pending setTimeout scheduled by logic.cpu(), if any. Tracked so
+// cpu() can clear a stale pending move before scheduling a new one - without
+// this, undo() re-triggering cpu() (needed so auto-play resumes in
+// CPU_BOTH_SIDES mode) could leave two timers in flight at once.
+let cpuMoveTimeout = null;
 
 if (localStorage.getItem("theme")) {
 	darkmode = localStorage.getItem("theme") === "dark" ? true : false;
@@ -106,7 +118,7 @@ function initGrid() {
 			element.appendChild(indexSpan);
 
 			element.addEventListener("click", () => {
-				if (state.cpu === state.turn) return;
+				if (state.cpu === state.turn || state.cpu === CPU_BOTH_SIDES) return;
 				if (isReplayingSequence) return;
 				logic.clickHandler(i, j);
 			});
@@ -140,7 +152,7 @@ function initGrid() {
 		logic.goToLast();
 	});
 	playerNumber.addEventListener("input", function () {
-		if (this.value === "2") {
+		if (this.value === "2" || this.value === "0") {
 			document.getElementById("pid").style.display = "none";
 		} else {
 			document.getElementById("pid").style.display = "flex";
@@ -214,6 +226,9 @@ function initGrid() {
 			// Si une séquence est fournie, forcer le mode deux joueurs
 			if (sequence || playerNumber.value === "2") {
 				cpu = 0;
+			} else if (playerNumber.value === "0") {
+				// 0 joueur : le moteur joue les deux couleurs, l'une contre l'autre
+				cpu = CPU_BOTH_SIDES;
 			} else {
 				cpu = playerId.value === "1" ? 1 : 2;
 			}
@@ -238,6 +253,7 @@ function initGrid() {
 	});
 	let stop = () => {
 		isReplayingSequence = false;
+		clearTimeout(cpuMoveTimeout);
 		document.body.classList.remove("replaying-sequence");
 		document.getElementById("undo").style.display = "inline-block";
 		document.getElementById("navigation-btns").style.display = "none";
@@ -536,7 +552,7 @@ let logic = {
 		syncBoardDisplayToggles();
 		this.updateNavigationButtons();
 		updateMoveHistory();
-		if (cpu === 1) {
+		if (cpu === 1 || cpu === CPU_BOTH_SIDES) {
 			this.cpu();
 		}
 	},
@@ -585,7 +601,7 @@ let logic = {
 	switchTurn() {
 		state.turn = state.turn === 1 ? 2 : 1;
 		let ended = this.validMoves();
-		if (state.cpu === state.turn) {
+		if (state.cpu === state.turn || state.cpu === CPU_BOTH_SIDES) {
 			this.cpu();
 		}
 		if (!ended) return;
@@ -597,7 +613,10 @@ let logic = {
 	undo() {
 		if (state.moves.length === 0) return;
 		let r;
-		if (state.cpu !== 0 && state.turn !== state.cpu) {
+		// Le mode CPU_BOTH_SIDES n'a pas de "tour humain" vers lequel remonter :
+		// on traite toujours ce cas comme un simple pop d'un seul coup (branche
+		// else), comme en mode humain contre humain.
+		if (state.cpu !== 0 && state.cpu !== CPU_BOTH_SIDES && state.turn !== state.cpu) {
 			if (state.moves.length < 2) return;
 			let length = state.moves.length;
 			while (state.moves[length - 1].turn === state.cpu && length > 1) {
@@ -615,6 +634,13 @@ let logic = {
 		state.currentMoveIndex = state.moves.length - 1;
 		checkdom();
 		this.validMoves();
+		// Relancer le CPU si l'annulation nous ramène sur son tour (n'arrive
+		// jamais en mode CPU simple, qui remonte toujours jusqu'au tour humain,
+		// mais systématique en mode CPU_BOTH_SIDES) - cpu() ne fait rien si le
+		// tour restauré n'a en fait aucun coup valide (position bloquée).
+		if (state.cpu === state.turn || state.cpu === CPU_BOTH_SIDES) {
+			this.cpu();
+		}
 		// Afficher les jetons retournés par le coup où l'on se retrouve après
 		// l'annulation (aucun si un coup passé ou si on revient à l'état
 		// initial), au lieu de laisser affiché le surlignage du coup annulé.
@@ -761,7 +787,8 @@ let logic = {
 	},
 	cpu() {
 		if (Object.keys(state.validMoves).length === 0) return;
-		setTimeout(() => {
+		clearTimeout(cpuMoveTimeout);
+		cpuMoveTimeout = setTimeout(() => {
 			let move;
 			let size = 0;
 			for (let id in state.validMoves) {
@@ -938,7 +965,7 @@ let logic = {
 		let lastBtn = document.getElementById("last");
 		
 		// Désactiver pendant le tour du CPU
-		let isCpuTurn = state.cpu !== 0 && state.cpu === state.turn;
+		let isCpuTurn = state.cpu !== 0 && (state.cpu === state.turn || state.cpu === CPU_BOTH_SIDES);
 		
 		// Vérifier si on est à la fin de l'historique
 		let isAtEnd = state.currentMoveIndex >= state.moves.length - 1;

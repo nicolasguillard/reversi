@@ -10,7 +10,7 @@ C'est l'écran affiché au lancement (sauf si une partie était en cours, voir �
 |---|---|
 | **About** | Ouvre la fenêtre modale des règles du jeu. |
 | **Light/Dark Mode** | Bascule le thème clair/sombre. Le choix est mémorisé dans `localStorage` (`theme`). |
-| **Number of Players** | `1` = contre l'ordinateur, `2` = deux joueurs humains sur le même écran. |
+| **Number of Players** | `0` = le moteur joue les deux couleurs l'une contre l'autre, sans aucune intervention humaine (le champ « Disk Color » est masqué et le plateau ignore les clics). `1` = contre l'ordinateur. `2` = deux joueurs humains sur le même écran. |
 | **Disk Color** | Visible seulement en mode 1 joueur. Choix de la couleur du joueur humain (Black/White) ; l'ordinateur joue l'autre couleur. |
 | **Or replay a Game Sequence** | Champ texte pour coller une séquence de coups (ex. `D3 C4 E3 F4`) et la rejouer automatiquement au lieu de jouer une partie normale. Le format est deux caractères par coup (colonne A-H + ligne 1-8), séparés par espace/virgule/point-virgule. Le champ se reformate automatiquement quand on le quitte (`blur`). Si une séquence est fournie, le mode passe forcément à 2 joueurs et les boutons de navigation apparaissent à la place du bouton Undo. |
 | **Replay Delay (ms)** | Délai entre chaque coup lors de la lecture automatique d'une séquence (utilisé par ▶ / lecture de séquence). |

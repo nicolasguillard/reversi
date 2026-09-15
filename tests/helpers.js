@@ -11,6 +11,13 @@ async function startTwoPlayerGame(page) {
 	await page.waitForSelector("body.game-active");
 }
 
+// 0 players: the engine plays both colors against itself, no human input.
+async function startZeroPlayerGame(page) {
+	await page.selectOption("#players", "0");
+	await page.click("#play");
+	await page.waitForSelector("body.game-active");
+}
+
 // color: "Black" (default, moves first) or "White" (CPU moves first).
 async function startOnePlayerGame(page, color = "Black") {
 	await page.selectOption("#players", "1");
@@ -78,6 +85,7 @@ const KNOWN_SEQUENCES = [
 module.exports = {
 	squareId,
 	startTwoPlayerGame,
+	startZeroPlayerGame,
 	startOnePlayerGame,
 	startSequence,
 	playFirstValidMove,

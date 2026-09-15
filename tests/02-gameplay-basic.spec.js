@@ -1,5 +1,5 @@
 const { test, expect } = require("./fixtures");
-const { startOnePlayerGame, startTwoPlayerGame, getScores, squareId } = require("./helpers");
+const { startOnePlayerGame, startTwoPlayerGame, startZeroPlayerGame, getScores, squareId } = require("./helpers");
 
 test.describe("Basic gameplay", () => {
 	test("shows the 4 legal opening moves highlighted", async ({ page }) => {
@@ -65,5 +65,51 @@ test.describe("Basic gameplay", () => {
 		await page.click("#stop");
 		await expect(page.locator("body")).toHaveClass(/setup-active/);
 		await expect(page.locator("#setup")).toBeVisible();
+	});
+
+	test.describe("0-player mode (engine vs itself)", () => {
+		test("plays both colors automatically with no input", async ({ page }) => {
+			await startZeroPlayerGame(page);
+
+			await expect(page.locator("#history-content .move-item")).toHaveCount(1, { timeout: 3000 });
+			await expect(page.locator("#history-content .move-item")).toHaveCount(2, { timeout: 3000 });
+			await expect(page.locator("#history-content .move-item")).toHaveCount(3, { timeout: 3000 });
+
+			const { black, white } = await getScores(page);
+			expect(black + white).toBeGreaterThan(5); // several auto-played moves applied
+		});
+
+		test("board clicks are ignored - both colors are CPU-controlled", async ({ page }) => {
+			await startZeroPlayerGame(page);
+			await page.click(`#${squareId(2, 3)}`); // D3, a normally-legal opening move
+
+			// Nothing changed as a direct result of the click (only the engine's
+			// own scheduled move, which lands after 1.5s, is allowed to score).
+			const { black, white } = await getScores(page);
+			expect(black).toBe(2);
+			expect(white).toBe(2);
+		});
+
+		test("Undo resumes auto-play instead of leaving the game permanently stuck", async ({ page }) => {
+			// Regression test: undo() didn't retrigger the CPU, so it relied
+			// entirely on a stale in-flight setTimeout (scheduled before the
+			// undo) to accidentally pick back up - which happens not to exist
+			// right after the very first move. Undoing there is the scenario
+			// most likely to expose a stuck game.
+			await startZeroPlayerGame(page);
+			const moveItems = page.locator("#history-content .move-item");
+			await expect(moveItems).toHaveCount(1, { timeout: 3000 });
+
+			await page.click("#undo");
+			await expect(moveItems).toHaveCount(0);
+
+			await expect(moveItems).toHaveCount(1, { timeout: 3000 });
+			// Also guard against the opposite failure mode: cpu() double-firing
+			// (a stale timer plus a freshly-scheduled one) would advance two
+			// moves almost immediately instead of respecting the ~1.5s pacing.
+			await page.waitForTimeout(500);
+			await expect(moveItems).toHaveCount(1);
+			await expect(moveItems).toHaveCount(2, { timeout: 3000 });
+		});
 	});
 });

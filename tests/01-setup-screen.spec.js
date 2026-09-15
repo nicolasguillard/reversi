@@ -6,12 +6,15 @@ test.describe("Setup screen", () => {
 		await expect(page.locator("#game")).toBeHidden();
 	});
 
-	test("disk color option is visible for 1 player and hidden for 2 players", async ({ page }) => {
+	test("disk color option is visible for 1 player and hidden for 0 or 2 players", async ({ page }) => {
 		const pid = page.locator("#pid");
 		await expect(page.locator("#players")).toHaveValue("1");
 		await expect(pid).toBeVisible();
 
 		await page.selectOption("#players", "2");
+		await expect(pid).toBeHidden();
+
+		await page.selectOption("#players", "0");
 		await expect(pid).toBeHidden();
 
 		await page.selectOption("#players", "1");
