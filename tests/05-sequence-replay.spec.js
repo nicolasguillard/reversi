@@ -173,18 +173,41 @@ test.describe("Game sequence replay - navigation controls", () => {
 	});
 
 	test("Play animates through the whole sequence back to the known final score", async ({ page }) => {
-		await startSequence(page, sequence, 15); // fast replay delay for the test
+		await startSequence(page, sequence, 200); // fastest available preset, to keep the test quick
 		await page.click("#first");
 		expect(await getScores(page)).toEqual({ black: 2, white: 2 });
 
 		await page.click("#play-replay");
 		await expect(page.locator("#pause-replay")).toBeVisible();
 
-		// Auto-replay hands control back to the Play button once it reaches the end.
-		await expect(page.locator("#play-replay")).toBeVisible({ timeout: 15000 });
+		// Auto-replay hands control back to the Play button once it reaches the
+		// end - up to historyEntries * 200ms plus overhead.
+		await expect(page.locator("#play-replay")).toBeVisible({ timeout: 20000 });
 		await expect(page.locator("#pause-replay")).toBeHidden();
 
 		expect(await getScores(page)).toEqual({ black: expected.black, white: expected.white });
 		await expect(page.locator("#turn")).toHaveText(`${expected.winner} Won!`);
+	});
+
+	test("changing the delay mid-replay takes effect immediately, not just on the next move", async ({
+		page,
+	}) => {
+		// Regression test: playReplay() used to read #replayDelay once and
+		// pre-schedule every remaining move with that single fixed delay, so
+		// changing the dropdown while ▶ was running had no effect at all until
+		// the whole replay was restarted. Move #1 of any replay always lands
+		// almost immediately regardless (the delay only applies *between*
+		// moves), so the gap to check is between move #1 and move #2.
+		await startSequence(page, sequence, 2000); // start deliberately slow
+		await page.click("#first");
+		await page.click("#play-replay");
+		await expect(page.locator("#pause-replay")).toBeVisible();
+
+		await page.waitForFunction(() => state.currentMoveIndex === 0, null, { timeout: 3000 });
+
+		// Switch to the fastest preset right after move #1 lands - move #2
+		// must land using the new ~200ms delay, not the original 2000ms gap.
+		await page.selectOption("#replayDelay", "200");
+		await page.waitForFunction(() => state.currentMoveIndex === 1, null, { timeout: 900 });
 	});
 });

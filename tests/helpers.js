@@ -28,13 +28,16 @@ async function startOnePlayerGame(page, color = "Black") {
 
 // Fills the "Game Sequence" textarea and starts the game. Sequence replay
 // always forces two-player mode, regardless of the players/color selects.
+// #replayDelay lives in #navigation-btns (game screen), so it can only be
+// set once the game has actually started; replayDelayMs must be one of its
+// preset option values (200/400/600/800/1000).
 async function startSequence(page, sequence, replayDelayMs) {
-	if (replayDelayMs !== undefined) {
-		await page.fill("#replayDelay", String(replayDelayMs));
-	}
 	await page.fill("#gameSequence", sequence);
 	await page.click("#play");
 	await page.waitForSelector("body.game-active");
+	if (replayDelayMs !== undefined) {
+		await page.selectOption("#replayDelay", String(replayDelayMs));
+	}
 }
 
 // Clicks the first currently-highlighted legal move and returns its square id.

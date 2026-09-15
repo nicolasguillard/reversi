@@ -119,28 +119,6 @@ h1 {
 	border-color: #059805;
 }
 
-#replayDelay {
-	font-family: monospace;
-	font-size: 1rem;
-	padding: 5px 8px;
-	border: 2px solid #008000;
-	border-radius: 5px;
-	background-color: #1a1a1a;
-	color: #fff;
-	width: 100px;
-}
-
-.light #replayDelay {
-	background-color: #f5f5f5;
-	color: #000;
-	border-color: #008000;
-}
-
-#replayDelay:focus {
-	outline: none;
-	border-color: #059805;
-}
-
 .modal {
 	display: flex;
 	background-color: #353535;
@@ -901,6 +879,28 @@ body.light .square.flipped {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
+}
+
+#replayDelay {
+	font-family: monospace;
+	font-size: 0.85rem;
+	height: 40px;
+	padding: 5px 6px;
+	border: 2px solid #008000;
+	border-radius: 5px;
+	background-color: #1a1a1a;
+	color: #fff;
+}
+
+.light #replayDelay {
+	background-color: #f5f5f5;
+	color: #000;
+	border-color: #008000;
+}
+
+#replayDelay:focus {
+	outline: none;
+	border-color: #059805;
 }
 
 #first {

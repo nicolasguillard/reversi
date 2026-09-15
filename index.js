@@ -151,6 +151,14 @@ function initGrid() {
 	document.getElementById("last").addEventListener("click", () => {
 		logic.goToLast();
 	});
+	document.getElementById("replayDelay").addEventListener("change", () => {
+		// Si une lecture automatique est en cours (pas juste en pause), redémarrer
+		// l'attente en cours avec la nouvelle valeur au lieu d'attendre le
+		// prochain coup pour en tenir compte.
+		if (!isPaused && replayTimeouts.length > 0) {
+			logic.scheduleNextReplayStep();
+		}
+	});
 	playerNumber.addEventListener("input", function () {
 		if (this.value === "2" || this.value === "0") {
 			document.getElementById("pid").style.display = "none";
@@ -1077,45 +1085,34 @@ let logic = {
 	},
 	playReplay() {
 		// Rejouer la séquence depuis l'état actuel
-		if (state.moves.length > 0) {
-			document.getElementById("play-replay").style.display = "none";
-			document.getElementById("pause-replay").style.display = "inline-block";
-			isPaused = false;
-			
-			// Calculer le nombre de coups restants
-			let remainingCount = state.moves.length - state.currentMoveIndex - 1;
-			
-			if (remainingCount > 0) {
-				let delay = 0;
-				let delayIncrement = parseInt(document.getElementById("replayDelay").value) || 600;
-				
-				replayTimeouts.forEach(timeout => clearTimeout(timeout));
-				replayTimeouts = [];
-				
-				// Jouer les coups restants
-				for (let i = 0; i < remainingCount; i++) {
-					let timeoutId = setTimeout(() => {
-						if (!isPaused) {
-							this.next();
-						}
-					}, delay);
-					replayTimeouts.push(timeoutId);
-					delay += delayIncrement;
-				}
-				
-				let finalTimeout = setTimeout(() => {
-					document.getElementById("play-replay").style.display = "inline-block";
-					document.getElementById("pause-replay").style.display = "none";
-					this.updateNavigationButtons();
-				}, delay);
-				replayTimeouts.push(finalTimeout);
-			} else {
-				// Déjà à la fin
+		let remainingCount = state.moves.length - state.currentMoveIndex - 1;
+		if (remainingCount <= 0) return;
+
+		document.getElementById("play-replay").style.display = "none";
+		document.getElementById("pause-replay").style.display = "inline-block";
+		isPaused = false;
+		this.scheduleNextReplayStep();
+	},
+	// Programme le prochain coup de la lecture automatique, un seul à la fois.
+	// Le délai est relu à chaque appel (donc juste avant chaque coup) au lieu
+	// d'être figé une fois pour toute la lecture : changer le menu déroulant
+	// pendant que ▶ tourne prend ainsi effet dès le coup suivant.
+	scheduleNextReplayStep() {
+		replayTimeouts.forEach(timeout => clearTimeout(timeout));
+		replayTimeouts = [];
+		let delay = parseInt(document.getElementById("replayDelay").value) || 600;
+		let timeoutId = setTimeout(() => {
+			if (isPaused) return;
+			this.next();
+			if (state.currentMoveIndex >= state.moves.length - 1) {
 				document.getElementById("play-replay").style.display = "inline-block";
 				document.getElementById("pause-replay").style.display = "none";
 				this.updateNavigationButtons();
+			} else {
+				this.scheduleNextReplayStep();
 			}
-		}
+		}, delay);
+		replayTimeouts.push(timeoutId);
 	},
 	prepareSequence(sequence) {
 		// Activer le mode replay pour éviter d'afficher la modale de victoire

@@ -13,7 +13,6 @@ C'est l'écran affiché au lancement (sauf si une partie était en cours, voir �
 | **Number of Players** | `0` = le moteur joue les deux couleurs l'une contre l'autre, sans aucune intervention humaine (le champ « Disk Color » est masqué et le plateau ignore les clics). `1` = contre l'ordinateur. `2` = deux joueurs humains sur le même écran. |
 | **Disk Color** | Visible seulement en mode 1 joueur. Choix de la couleur du joueur humain (Black/White) ; l'ordinateur joue l'autre couleur. |
 | **Or replay a Game Sequence** | Champ texte pour coller une séquence de coups (ex. `D3 C4 E3 F4`) et la rejouer automatiquement au lieu de jouer une partie normale. Le format est deux caractères par coup (colonne A-H + ligne 1-8), séparés par espace/virgule/point-virgule. Le champ se reformate automatiquement quand on le quitte (`blur`). Si une séquence est fournie, le mode passe forcément à 2 joueurs et les boutons de navigation apparaissent à la place du bouton Undo. |
-| **Replay Delay (ms)** | Délai entre chaque coup lors de la lecture automatique d'une séquence (utilisé par ▶ / lecture de séquence). |
 | **Start!** | Valide la séquence (s'il y en a une) puis lance la partie. Si la séquence contient un coup invalide, une modale d'erreur s'affiche avec le numéro du coup fautif et le champ est surligné en rouge. |
 
 ## 2. Écran de jeu (`#game`)
@@ -39,9 +38,10 @@ Liste les coups joués, une ligne par tour (coup Noir + coup Blanc). Un coup pas
 ### 2.4 Barre de navigation (`#navigation-btns`)
 Visible uniquement pendant la lecture d'une séquence de coups. Permet de parcourir l'historique :
 - **⏮ First** : retour à l'état initial du plateau.
-- **▶ Play / ⏸ Pause** : lance ou met en pause la lecture automatique des coups restants (au rythme du « Replay Delay »).
+- **▶ Play / ⏸ Pause** : lance ou met en pause la lecture automatique des coups restants (au rythme choisi dans le menu déroulant de délai, voir ci-dessous).
 - **◀◀ Previous / ▶▶ Next** : recule/avance d'un coup.
 - **⏭ Last** : va directement au dernier coup joué.
+- **Menu déroulant de délai** (`#replayDelay`) : temps entre chaque coup lors de la lecture automatique (200 à 2000 ms, 600 ms par défaut). Un coup n'est programmé qu'un à la fois, donc changer la valeur pendant que ▶ tourne prend effet immédiatement : le coup suivant utilise la nouvelle valeur (l'attente en cours redémarre avec le nouveau délai plutôt que de terminer avec l'ancien).
 
 Ces boutons se désactivent automatiquement en début/fin d'historique ou pendant le tour de l'ordinateur.
 
