@@ -492,6 +492,53 @@ function updateMoveHistory() {
 	
 	// Faire défiler automatiquement pour montrer le coup actuel
 	scrollToCurrentMove();
+
+	updateAdvantageSparkline();
+}
+
+// Calcule puis dessine le sparkline "Black Advantage" : un point par position
+// jouée jusqu'à state.currentMoveIndex (inclus), valeur = nb jetons noirs -
+// nb jetons blancs à ce moment-là (positif = avantage Noir, négatif = Blanc).
+// state.moves[i].grid est le plateau AVANT le coup i ; le plateau APRÈS ce
+// coup est donc state.moves[i + 1].grid s'il existe, sinon state.grid (le
+// plateau affiché à l'instant, toujours cohérent avec currentMoveIndex quel
+// que soit le moyen de navigation utilisé pour y arriver).
+function updateAdvantageSparkline() {
+	let values = [0];
+	let diskCounts = [{ p1: 2, p2: 2 }]; // état initial (2-2, avant tout coup)
+	for (let i = 0; i <= state.currentMoveIndex; i++) {
+		let gridAfterMove = i + 1 < state.moves.length ? state.moves[i + 1].grid : state.grid;
+		let counts = ReversiEngine.countDisks(gridAfterMove);
+		values.push(counts.p1 - counts.p2);
+		diskCounts.push(counts);
+	}
+	// Exposé pour les tests (plus robuste que d'inférer le nombre de points
+	// depuis la largeur du canvas dessiné par la librairie).
+	document.getElementById("advantage-sparkline").dataset.values = JSON.stringify(values);
+	$("#advantage-sparkline").sparkline(values, {
+		type: "bar",
+		barColor: "#008000",
+		negBarColor: "#ff0000",
+		zeroColor: "#888888",
+		nullColor: "#888888",
+		// +50% horizontal : la librairie tronque les valeurs non entières en
+		// interne (4.5/1.5 donnait ~+26%, pas +50%), donc on vise directement
+		// la largeur totale par point (barWidth+barSpacing) = 6px au lieu de
+		// 4px (3+1) - 5+1 au lieu de 4.5+1.5 pour rester en pixels entiers.
+		barWidth: 5,
+		barSpacing: 1,
+		height: "40px",
+		tooltipFormatter: function (_sparkline, _options, fieldsArray) {
+			// jquery.sparkline passe toujours un TABLEAU de champs (même pour un
+			// graphe en barres non empilées à une seule valeur par point) - lire
+			// fields.value/.offset directement (sans [0]) renvoie "undefined".
+			let fields = fieldsArray[0];
+			let counts = diskCounts[fields.offset];
+			let label = fields.offset === 0 ? "Start" : "After move " + fields.offset;
+			let advantage = fields.value > 0 ? "+" + fields.value : String(fields.value);
+			return label + " — Advantage: " + advantage + " (Black: " + counts.p1 + ", White: " + counts.p2 + ")";
+		},
+	});
 }
 
 function scrollToCurrentMove() {

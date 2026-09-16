@@ -54,6 +54,14 @@ async function getScores(page) {
 	return { black: Number(black), white: Number(white) };
 }
 
+// Reads back the "Black Advantage" sparkline's underlying data points
+// (see updateAdvantageSparkline() in index.js), rather than inferring them
+// from the rendered canvas's pixel dimensions.
+async function getAdvantageValues(page) {
+	const raw = await page.locator("#advantage-sparkline").getAttribute("data-values");
+	return JSON.parse(raw);
+}
+
 // Known-good full game sequences (regression fixtures), each paired with
 // the outcome produced by the current engine when replayed to the end.
 // See tests/README.md for how these were derived/verified.
@@ -93,5 +101,6 @@ module.exports = {
 	startSequence,
 	playFirstValidMove,
 	getScores,
+	getAdvantageValues,
 	KNOWN_SEQUENCES,
 };

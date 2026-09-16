@@ -4,6 +4,7 @@ const contentToCache = [
 	"./index.html",
 	"./index.css",
 	"./index.js",
+	"./engine.js",
 	"./sw.js",
 	"./icon.png",
 	"./GitHub-Mark-64px.png",
@@ -11,6 +12,8 @@ const contentToCache = [
 	"./icon512.png",
 	"./favicon.png",
 	"./apple-icon.png",
+	"./vendor/jquery.min.js",
+	"./vendor/jquery.sparkline.min.js",
 ];
 
 self.addEventListener("install", (e) => {

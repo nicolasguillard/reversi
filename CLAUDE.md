@@ -24,11 +24,12 @@ When editing `sw.js`'s `contentToCache` list, keep it in sync with the actual st
 
 ## Architecture
 
-Three script files, loaded in this order from `index.html`:
+Script files, loaded in this order from `index.html`:
 
-1. **`engine.js`** — `ReversiEngine`: pure game-rules module (IIFE, no DOM access at all). Board is an 8×8 array of arrays, `0` = empty, `1` = white, `2` = black, indexed `[row][col]`. A square id is encoded as `row * 10 + col` (not `row * 8 + col`) and used as an object key or Set member throughout the codebase — this encoding is load-bearing, don't change it without updating every consumer. Exposes `createEmptyGrid`, `opponent`, `check` (flips for a hypothetical move), `getValidMoves` (map of `squareId -> Set(flippedIds)`), `countDisks`. Also exports via `module.exports` if `module` exists — it's loaded as a plain script in `index.html`, but `tests/derive-sequence-outcomes.js` `require()`s it directly under Node to check candidate move sequences headlessly.
-2. **`index.js`** — everything else: DOM setup, UI event wiring, and the `logic` object that drives gameplay. `logic` mutates the global `state` object and re-renders by writing into a `squares[i][j]` grid of cached DOM element references (`squares` is populated once in `initGrid`).
-3. **`index.css`** — all styling, including dark/light theme via a `.light` class toggle on `<body>`, and CSS classes that gate visual-only board indicators (see below).
+1. **`vendor/jquery.min.js`**, **`vendor/jquery.sparkline.min.js`** — vendored third-party libraries (not npm/build-managed — see `vendor/README.md`), used only for the "Black Advantage" sparkline. Vendored locally rather than CDN-loaded so `sw.js` can cache them for offline use, matching how every other static asset is served.
+2. **`engine.js`** — `ReversiEngine`: pure game-rules module (IIFE, no DOM access at all). Board is an 8×8 array of arrays, `0` = empty, `1` = white, `2` = black, indexed `[row][col]`. A square id is encoded as `row * 10 + col` (not `row * 8 + col`) and used as an object key or Set member throughout the codebase — this encoding is load-bearing, don't change it without updating every consumer. Exposes `createEmptyGrid`, `opponent`, `check` (flips for a hypothetical move), `getValidMoves` (map of `squareId -> Set(flippedIds)`), `countDisks`. Also exports via `module.exports` if `module` exists — it's loaded as a plain script in `index.html`, but `tests/derive-sequence-outcomes.js` `require()`s it directly under Node to check candidate move sequences headlessly.
+3. **`index.js`** — everything else: DOM setup, UI event wiring, and the `logic` object that drives gameplay. `logic` mutates the global `state` object and re-renders by writing into a `squares[i][j]` grid of cached DOM element references (`squares` is populated once in `initGrid`).
+4. **`index.css`** — all styling, including dark/light theme via a `.light` class toggle on `<body>`, and CSS classes that gate visual-only board indicators (see below).
 
 ### Move history and time-travel
 
@@ -41,6 +42,12 @@ The setup screen's "Or replay a Game Sequence" textarea accepts space/comma/semi
 ### Board display toggles are cosmetic only
 
 The six checkboxes in `.show-checkboxes-container` (`showValidMoves`, `showLastMove`, `showMoveNumbers`, `showSquareIndices`, `showMonoMoveIndices`, `showFlippedBackground`) only add/remove CSS classes on `#grid` or toggle DOM indicator elements — none of them affect `state` or game rules. `showLastMove` and `showMoveNumbers` interact: when move numbers are shown, "last move" highlighting is applied to the move-number element itself (class `last-move-number`) instead of drawing a separate dot indicator. See `DOCUMENTATION.md` for the full behavior spec of each toggle (in French).
+
+### Black Advantage sparkline
+
+`updateAdvantageSparkline()` in `index.js` draws a jquery.sparkline bar chart into `#advantage-sparkline` (between `#game-container` and `.show-checkboxes-container`), called from inside `updateMoveHistory()` so it stays in sync with every state-changing action without needing its own call sites. One data point per position from the start of the game up to `state.currentMoveIndex` (plus a leading 0 for the initial 2-2 position), each computed as `ReversiEngine.countDisks(...).p1 - .p2` (positive = Black ahead, negative = White ahead) on the grid *after* that move — `state.moves[i + 1].grid` when it exists, else the live `state.grid`. The computed array is also stashed on `#advantage-sparkline`'s `data-values` attribute (JSON) purely so tests can read it back precisely instead of inferring point count from the rendered canvas's pixel width.
+
+`.game-active #game`'s flex column uses `justify-content: flex-start` (not `center`) with `overflow-y: auto` specifically because of this: centering overflowing flex content pushes it into negative scroll territory browsers can't scroll back to, making `#undo`/`#stop` permanently unclickable once the column (grid + history + sparkline + checkboxes + nav bar) exceeds the viewport height. Don't reintroduce `center` here without re-solving that.
 
 ### Persistence
 

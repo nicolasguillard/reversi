@@ -35,7 +35,13 @@ Grille 8×8 avec étiquettes de colonnes (A-H) et de lignes (1-8). Chaque case p
 ### 2.3 Historique des coups (`#move-history`)
 Liste les coups joués, une ligne par tour (coup Noir + coup Blanc). Un coup passé (aucun mouvement possible) est noté **Z0** en jaune. Cliquer sur un coup de l'historique navigue directement vers l'état du plateau à ce moment-là (voir `navigateToMove`). Les coups non encore atteints (si on est revenu en arrière) apparaissent grisés (« future-move »).
 
-### 2.4 Barre de navigation (`#navigation-btns`)
+### 2.4 Avantage Noir (`#advantage-container`)
+Mini-graphique en barres (sparkline, librairie jquery.sparkline) entre le plateau et les cases à cocher. Un point par position jouée jusqu'au coup actuellement affiché (plus un point initial à 0 pour le début de partie) : valeur = nombre de jetons noirs moins nombre de jetons blancs à ce moment-là.
+- Barre verte vers le haut : avantage matériel à Noir. Barre rouge vers le bas : avantage à Blanc.
+- Se met à jour à chaque coup joué, annulé, ou lors de la navigation dans l'historique — reflète toujours la position actuellement affichée, pas seulement la fin de partie.
+- Une infobulle au survol de chaque barre précise le numéro du coup, l'avantage exact (signé, ex. `+3`) et le nombre de jetons de chaque couleur à ce moment-là.
+
+### 2.5 Barre de navigation (`#navigation-btns`)
 Visible uniquement pendant la lecture d'une séquence de coups. Permet de parcourir l'historique :
 - **⏮ First** : retour à l'état initial du plateau.
 - **▶ Play / ⏸ Pause** : lance ou met en pause la lecture automatique des coups restants (au rythme choisi dans le menu déroulant de délai, voir ci-dessous).
