@@ -367,6 +367,13 @@ function initGrid() {
 			}
 		}
 	});
+
+	document.getElementById("clearSequence").addEventListener("click", () => {
+		let gameSequenceField = document.getElementById("gameSequence");
+		gameSequenceField.value = "";
+		gameSequenceField.style.backgroundColor = "";
+		gameSequenceField.focus();
+	});
 }
 
 function showModal(el) {

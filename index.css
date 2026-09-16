@@ -90,9 +90,24 @@ h1 {
 	align-items: flex-start;
 }
 
-.sequence-option .label {
+.sequence-option-header {
+	width: 100%;
+	display: flex;
+	flex-direction: row;
+	justify-content: space-between;
+	align-items: center;
 	margin-bottom: 5px;
+}
+
+.sequence-option .label {
+	margin-bottom: 0;
 	font-size: 1em;
+}
+
+.btn-small {
+	padding: 3px 10px;
+	font-size: 0.9rem;
+	margin: 0;
 }
 
 #gameSequence {

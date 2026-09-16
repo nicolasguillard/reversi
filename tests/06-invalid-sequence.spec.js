@@ -43,4 +43,27 @@ test.describe("Game sequence validation", () => {
 
 		await expect(field).toHaveValue("D3 C4 E3 F4");
 	});
+
+	test("Clear empties the sequence field and resets the invalid-attempt red background", async ({ page }) => {
+		const field = page.locator("#gameSequence");
+		await field.fill("Z9 A1"); // malformed -> turns the field red
+		await page.click("#play");
+		await expect(field).toHaveCSS("background-color", "rgb(255, 204, 204)");
+
+		await page.click("#clearSequence");
+
+		await expect(field).toHaveValue("");
+		await expect(field).not.toHaveCSS("background-color", "rgb(255, 204, 204)");
+	});
+
+	test("starting a game after Clear plays a normal (non-sequence) game", async ({ page }) => {
+		await page.locator("#gameSequence").fill("F5 F6 E6 F4");
+		await page.click("#clearSequence");
+
+		await page.click("#play");
+
+		await expect(page.locator("body")).toHaveClass(/game-active/);
+		await expect(page.locator("#undo")).toBeVisible();
+		await expect(page.locator("#navigation-btns")).toBeHidden();
+	});
 });
