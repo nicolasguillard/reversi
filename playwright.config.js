@@ -13,6 +13,9 @@ module.exports = defineConfig({
 		baseURL: `http://localhost:${PORT}`,
 		trace: "retain-on-failure",
 		screenshot: "only-on-failure",
+		// Needed to read navigator.clipboard.readText() back in the
+		// "Copy sequence" tests.
+		permissions: ["clipboard-read", "clipboard-write"],
 	},
 	webServer: {
 		command: `node scripts/static-server.js`,

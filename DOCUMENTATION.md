@@ -35,6 +35,8 @@ Grille 8×8 avec étiquettes de colonnes (A-H) et de lignes (1-8). Chaque case p
 ### 2.3 Historique des coups (`#move-history`)
 Liste les coups joués, une ligne par tour (coup Noir + coup Blanc). Un coup passé (aucun mouvement possible) est noté **Z0** en jaune. Cliquer sur un coup de l'historique navigue directement vers l'état du plateau à ce moment-là (voir `navigateToMove`). Les coups non encore atteints (si on est revenu en arrière) apparaissent grisés (« future-move »).
 
+Sous la liste, le bouton **Copy sequence** copie dans le presse-papiers la séquence des coups réellement joués, dans le même format que celui accepté par le champ « Or replay a Game Sequence » de l'écran de configuration (ex. `D3 C4 E3 F4`) — les coups passés (Z0) sont omis, car ce champ n'a pas de notation pour eux ; ils sont de toute façon réinsérés automatiquement au bon moment si la séquence copiée est rejouée. Désactivé tant qu'aucun coup n'a été joué ; affiche brièvement « Copied! » après un clic.
+
 ### 2.4 Avantage Noir (`#advantage-container`)
 Mini-graphique en barres (sparkline, librairie jquery.sparkline) entre le plateau et les cases à cocher. Un point par position jouée jusqu'au coup actuellement affiché (plus un point initial à 0 pour le début de partie) : valeur = nombre de jetons noirs moins nombre de jetons blancs à ce moment-là.
 - Barre verte vers le haut : avantage matériel à Noir. Barre rouge vers le bas : avantage à Blanc.

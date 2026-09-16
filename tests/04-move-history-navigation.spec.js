@@ -1,5 +1,12 @@
 const { test, expect } = require("./fixtures");
-const { startTwoPlayerGame, startSequence, playFirstValidMove, getScores, KNOWN_SEQUENCES } = require("./helpers");
+const {
+	startTwoPlayerGame,
+	startSequence,
+	playFirstValidMove,
+	getScores,
+	squareId,
+	KNOWN_SEQUENCES,
+} = require("./helpers");
 
 test.describe("Move history and navigation", () => {
 	test("history panel grows by one entry per move", async ({ page }) => {
@@ -118,6 +125,93 @@ test.describe("Move history and navigation", () => {
 
 			await page.click("#last"); // jumps straight to the second Z0
 			await expect(page.locator(".flipped")).toHaveCount(0);
+		});
+	});
+
+	test.describe("Copy sequence button", () => {
+		test("is disabled until a move has been played", async ({ page }) => {
+			await startTwoPlayerGame(page);
+			await expect(page.locator("#copySequence")).toBeDisabled();
+
+			await playFirstValidMove(page);
+			await expect(page.locator("#copySequence")).toBeEnabled();
+		});
+
+		test("copies the played moves in the same format the sequence field accepts", async ({ page }) => {
+			await startTwoPlayerGame(page);
+			await page.click(`#${squareId(2, 3)}`); // D3
+			await page.click(`#${squareId(2, 4)}`); // E3
+
+			await page.click("#copySequence");
+
+			const clipboard = await page.evaluate(() => navigator.clipboard.readText());
+			expect(clipboard).toBe("D3 E3");
+		});
+
+		test("shows 'Copied!' feedback that reverts after a short delay", async ({ page }) => {
+			await startTwoPlayerGame(page);
+			await page.click(`#${squareId(2, 3)}`); // D3
+
+			const button = page.locator("#copySequence");
+			await expect(button).toHaveText("Copy sequence");
+			await button.click();
+			await expect(button).toHaveText("Copied!");
+			await expect(button).toHaveText("Copy sequence", { timeout: 3000 });
+		});
+
+		test("omits Z0 passes from the copied sequence", async ({ page }) => {
+			// Regression-shaped test: the sequence field has no notation for a
+			// pass, so a copied sequence containing "Z0" could never be pasted
+			// back in - prepareSequence() reinserts passes automatically at the
+			// right point when the same real moves are replayed.
+			const { sequence } = KNOWN_SEQUENCES[0]; // ends with 2 trailing Z0 passes
+			const moves = sequence.match(/.{1,2}/g);
+
+			await startTwoPlayerGame(page);
+			for (const move of moves) {
+				await page.click(`#${move}`);
+			}
+			await page.click("#cancel"); // dismiss the victory modal (game ended live)
+
+			await page.click("#copySequence");
+			const clipboard = await page.evaluate(() => navigator.clipboard.readText());
+
+			expect(clipboard).not.toContain("Z0");
+			expect(clipboard).toBe(moves.join(" "));
+		});
+
+		test("the copied sequence can be pasted back in and replayed to the same result", async ({ page }) => {
+			const { sequence, expected } = KNOWN_SEQUENCES[0];
+			const moves = sequence.match(/.{1,2}/g);
+
+			await startTwoPlayerGame(page);
+			for (const move of moves) {
+				await page.click(`#${move}`);
+			}
+			await page.click("#cancel");
+			await page.click("#copySequence");
+			const clipboard = await page.evaluate(() => navigator.clipboard.readText());
+
+			await page.click("#stop");
+			await expect(page.locator("body")).toHaveClass(/setup-active/);
+
+			await page.fill("#gameSequence", clipboard);
+			await page.click("#play");
+
+			await expect(page.locator("body")).toHaveClass(/game-active/);
+			expect(await getScores(page)).toEqual({ black: expected.black, white: expected.white });
+		});
+
+		test("is disabled again once a new game starts", async ({ page }) => {
+			await startTwoPlayerGame(page);
+			await page.click(`#${squareId(2, 3)}`); // D3
+			await expect(page.locator("#copySequence")).toBeEnabled();
+
+			await page.click("#stop");
+			await expect(page.locator("body")).toHaveClass(/setup-active/);
+			await startTwoPlayerGame(page);
+
+			await expect(page.locator("#copySequence")).toBeDisabled();
 		});
 	});
 });

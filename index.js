@@ -374,6 +374,18 @@ function initGrid() {
 		gameSequenceField.style.backgroundColor = "";
 		gameSequenceField.focus();
 	});
+
+	document.getElementById("copySequence").addEventListener("click", () => {
+		let btn = document.getElementById("copySequence");
+		let sequence = buildSequenceString();
+		if (!sequence) return;
+		navigator.clipboard.writeText(sequence).then(() => {
+			btn.textContent = "Copied!";
+			setTimeout(() => {
+				btn.textContent = "Copy sequence";
+			}, 1500);
+		});
+	});
 }
 
 function showModal(el) {
@@ -494,6 +506,25 @@ function updateMoveHistory() {
 	scrollToCurrentMove();
 
 	updateAdvantageSparkline();
+
+	// Rien à copier tant qu'aucun coup réel n'a été joué.
+	document.getElementById("copySequence").disabled = state.moves.length === 0;
+}
+
+// Reconstruit la séquence de coups réels (les passes Z0 sont omises - la
+// séquence collée dans #gameSequence n'a pas de notation pour elles, elles
+// sont réinsérées automatiquement par prepareSequence() au bon moment) dans
+// le même format que celui accepté/affiché par le champ de saisie d'une
+// séquence : lettres de colonne majuscules + chiffre de ligne, séparés par
+// des espaces (ex. "D3 C4 E3 F4").
+function buildSequenceString() {
+	let alphabets = ["A", "B", "C", "D", "E", "F", "G", "H"];
+	let parts = [];
+	for (let move of state.moves) {
+		if (move.position.i === -1 && move.position.j === -1) continue;
+		parts.push(alphabets[move.position.j] + (move.position.i + 1));
+	}
+	return parts.join(" ");
 }
 
 // Calcule puis dessine le sparkline "Black Advantage" : un point par position
