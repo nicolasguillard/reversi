@@ -1,5 +1,5 @@
 const { test, expect } = require("./fixtures");
-const { getScores } = require("./helpers");
+const { getScores, startTwoPlayerGame, KNOWN_SEQUENCES } = require("./helpers");
 
 // Two known-good board states (verified against engine.js - see
 // tests/derive-sequence-outcomes.js-style reasoning in the PR notes):
@@ -127,14 +127,78 @@ test.describe("Loading a board-state string into the sequence field", () => {
 		await expect(page.locator("#history-content .move-item")).toHaveCount(1); // navigation only, history untouched
 	});
 
-	test("a malformed near-miss (65 chars, or an invalid character) falls through to sequence validation", async ({
+	test("a malformed near-miss (66 chars, or an invalid trailing character) falls through to sequence validation", async ({
 		page,
 	}) => {
+		// Note: a *valid* 65th "o"/"x" character is no longer a near-miss - it's
+		// the explicit turn indicator (see the "explicit turn indicator" tests
+		// below) - so this exercises genuinely invalid trailing content instead:
+		// one character too many, and a trailing character outside "o"/"x".
 		const field = page.locator("#gameSequence");
-		await field.fill(MID_GAME + "o"); // 65 characters
+		await field.fill(MID_GAME + "oo"); // 66 characters
 		await page.click("#play");
 
 		await expect(field).toHaveCSS("background-color", "rgb(255, 204, 204)");
 		await expect(page.locator("body")).toHaveClass(/setup-active/);
+
+		await field.fill(MID_GAME + "z"); // 65 characters, but "z" isn't "o"/"x"
+		await page.click("#play");
+
+		await expect(field).toHaveCSS("background-color", "rgb(255, 204, 204)");
+		await expect(page.locator("body")).toHaveClass(/setup-active/);
+	});
+
+	test.describe("explicit turn indicator (65th character)", () => {
+		test("an appended 'x' overrides the deduced turn (MID_GAME would otherwise deduce Black)", async ({ page }) => {
+			await loadBoardState(page, MID_GAME + "x");
+
+			expect(await getScores(page)).toEqual({ black: 12, white: 16 }); // same board as MID_GAME
+			await expect(page.locator("#turn")).toHaveText("White's Turn");
+		});
+
+		test("an appended 'o' agrees with the deduced turn (MID_GAME deduces Black on its own)", async ({ page }) => {
+			await loadBoardState(page, MID_GAME + "o");
+
+			expect(await getScores(page)).toEqual({ black: 12, white: 16 });
+			await expect(page.locator("#turn")).toHaveText("Black's Turn");
+		});
+
+		test("Copy board state appends the turn indicator for a non-terminal position, and it round-trips through the sequence field", async ({
+			page,
+		}) => {
+			await loadBoardState(page, MID_GAME);
+			await expect(page.locator("#turn")).toHaveText("Black's Turn");
+
+			await page.click("#copyBoardState");
+			const copied = await page.evaluate(() => navigator.clipboard.readText());
+			expect(copied).toHaveLength(65);
+			expect(copied.slice(-1)).toBe("o"); // Black to move
+
+			await page.click("#stop");
+			await page.click("#clearSequence");
+			await loadBoardState(page, copied);
+
+			expect(await getScores(page)).toEqual({ black: 12, white: 16 });
+			await expect(page.locator("#turn")).toHaveText("Black's Turn");
+		});
+
+		test("Copy board state omits the turn indicator for a terminal position", async ({ page }) => {
+			// Reach the terminal position through live play rather than loading
+			// an already-terminal board-state string: #move-history (which holds
+			// #copyBoardState) is hidden entirely for the latter, since a loaded
+			// state with no possible history has nothing worth showing there.
+			const { sequence } = KNOWN_SEQUENCES[0]; // ends with 2 trailing Z0 passes
+			const moves = sequence.match(/.{1,2}/g);
+
+			await startTwoPlayerGame(page);
+			for (const move of moves) {
+				await page.click(`#${move}`);
+			}
+			await page.click("#cancel"); // dismiss the victory modal (game ended live)
+
+			await page.click("#copyBoardState");
+			const copied = await page.evaluate(() => navigator.clipboard.readText());
+			expect(copied).toHaveLength(64); // terminal: no turn indicator appended
+		});
 	});
 });

@@ -391,6 +391,17 @@ function initGrid() {
 			}, 1500);
 		});
 	});
+
+	document.getElementById("copyBoardState").addEventListener("click", () => {
+		let btn = document.getElementById("copyBoardState");
+		let boardState = buildBoardStateString();
+		navigator.clipboard.writeText(boardState).then(() => {
+			btn.textContent = "Copied!";
+			setTimeout(() => {
+				btn.textContent = "Copy board state";
+			}, 1500);
+		});
+	});
 }
 
 function showModal(el) {
@@ -532,30 +543,74 @@ function buildSequenceString() {
 	return parts.join(" ");
 }
 
+// Vrai si ni Noir ni Blanc n'a de coup légal sur ce plateau - couvre aussi le
+// plateau plein ou un camp éliminé, qui laissent alors mécaniquement les deux
+// sans coup légal.
+function isBoardTerminal(grid) {
+	return Object.keys(ReversiEngine.getValidMoves(grid, 1)).length === 0
+		&& Object.keys(ReversiEngine.getValidMoves(grid, 2)).length === 0;
+}
+
+// Reconstruit l'état actuel du plateau (state.grid) dans le même format que
+// celui accepté par parseBoardState() en entrée du champ séquence : une
+// chaîne de 64 caractères "o"/"x"/"." lue ligne par ligne de A1 à H8, symétrique
+// exact de son mapping (grid 1 -> "o", grid 2 -> "x", 0 -> ".") pour qu'un
+// aller-retour copier/coller reproduise fidèlement la même position. Si la
+// partie n'est pas terminée à cet instant, un 65ème caractère ("o"/"x", même
+// mapping) est ajouté pour indiquer sans ambiguïté le joueur au trait - utile
+// dès que les deux camps ont un coup légal, cas que parseBoardState() ne peut
+// pas trancher à partir des 64 cases seules.
+function buildBoardStateString() {
+	let chars = [];
+	for (let i = 0; i < 8; i++) {
+		for (let j = 0; j < 8; j++) {
+			let value = state.grid[i][j];
+			chars.push(value === 1 ? "o" : value === 2 ? "x" : ".");
+		}
+	}
+	if (!isBoardTerminal(state.grid)) {
+		chars.push(state.turn === 1 ? "o" : "x");
+	}
+	return chars.join("");
+}
+
 // Tente d'interpréter value comme un état de plateau plutôt qu'une séquence
 // de coups : une chaîne de 64 caractères "o" (pièce noire), "x" (pièce
 // blanche) ou "." (case vide), lue ligne par ligne de A1 à H8 (même ordre
 // que l'indice de case affiché par "Show square indices"), éventuellement
-// entourée de guillemets droits (ex. copiée depuis un JSON.stringify).
-// Renvoie { grid, turn } si le format correspond, sinon null. "turn" est
-// déduit : Noir s'il a au moins un coup légal, sinon Blanc s'il en a un,
-// sinon Noir par défaut (aucun coup possible pour personne - la partie est
-// déjà terminée, la couleur du tour n'a alors plus d'importance).
+// suivie d'un 65ème caractère "o"/"x" indiquant explicitement le joueur au
+// trait (produit par buildBoardStateString() - voir plus haut), le tout
+// éventuellement entouré de guillemets droits (ex. copié depuis un
+// JSON.stringify). Renvoie { grid, turn } si le format correspond, sinon
+// null. Si le 65ème caractère est absent, "turn" est déduit à partir des 64
+// cases : Noir s'il a au moins un coup légal, sinon Blanc s'il en a un, sinon
+// Noir par défaut (aucun coup possible pour personne - la partie est déjà
+// terminée, la couleur du tour n'a alors plus d'importance) - une déduction
+// qui ne peut par nature pas distinguer le joueur au trait quand les deux
+// camps ont un coup légal, d'où l'intérêt du 65ème caractère explicite.
 function parseBoardState(value) {
 	let trimmed = value.trim().replace(/^"+/, "").replace(/"+$/, "");
-	if (!/^[ox.]{64}$/i.test(trimmed)) {
+	let match = trimmed.match(/^([ox.]{64})([ox])?$/i);
+	if (!match) {
 		return null;
 	}
+	let boardPart = match[1];
+	let turnChar = match[2];
 	let grid = ReversiEngine.createEmptyGrid();
 	for (let k = 0; k < 64; k++) {
 		let i = Math.floor(k / 8);
 		let j = k % 8;
-		let ch = trimmed[k].toLowerCase();
+		let ch = boardPart[k].toLowerCase();
 		grid[i][j] = ch === "o" ? 1 : ch === "x" ? 2 : 0;
 	}
-	let turn = 1;
-	if (Object.keys(ReversiEngine.getValidMoves(grid, 1)).length === 0) {
-		turn = Object.keys(ReversiEngine.getValidMoves(grid, 2)).length > 0 ? 2 : 1;
+	let turn;
+	if (turnChar) {
+		turn = turnChar.toLowerCase() === "o" ? 1 : 2;
+	} else {
+		turn = 1;
+		if (Object.keys(ReversiEngine.getValidMoves(grid, 1)).length === 0) {
+			turn = Object.keys(ReversiEngine.getValidMoves(grid, 2)).length > 0 ? 2 : 1;
+		}
 	}
 	return { grid, turn };
 }

@@ -489,7 +489,8 @@ body.light #error-message {
 	line-height: 1.8;
 }
 
-#copySequence {
+#copySequence,
+#copyBoardState {
 	display: block;
 	width: 100%;
 	margin-top: 10px;
