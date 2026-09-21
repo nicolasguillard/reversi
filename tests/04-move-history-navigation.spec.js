@@ -1,6 +1,7 @@
 const { test, expect } = require("./fixtures");
 const {
 	startTwoPlayerGame,
+	startOnePlayerGame,
 	startSequence,
 	playFirstValidMove,
 	getScores,
@@ -102,9 +103,10 @@ test.describe("Move history and navigation", () => {
 		});
 
 		test("Previous/Next/Last also clear flipped highlighting when landing on a Z0", async ({ page }) => {
-			// #previous/#next/#last only exist in sequence-replay mode (the
-			// live-play equivalent has no such buttons, only history clicks) -
-			// use the "Game Sequence" textarea instead of live clicks here.
+			// Sequence replay is used here purely for convenience (it jumps
+			// straight to the end of a known fixture) - #previous/#next/#last
+			// behave the same way in a normal live game, see the "Navigation
+			// bar in a normal (non-sequence) game" tests below.
 			await startSequence(page, sequence);
 			await page.check("#showFlippedBackground");
 			// prepareSequence() jumps straight to the end (the second Z0);
@@ -212,6 +214,51 @@ test.describe("Move history and navigation", () => {
 			await startTwoPlayerGame(page);
 
 			await expect(page.locator("#copySequence")).toBeDisabled();
+		});
+	});
+
+	test.describe("Navigation bar in a normal (non-sequence) game", () => {
+		test("shows alongside Undo, not instead of it", async ({ page }) => {
+			await startTwoPlayerGame(page);
+			await expect(page.locator("#undo")).toBeVisible();
+			await expect(page.locator("#navigation-btns")).toBeVisible();
+		});
+
+		test("First/Previous/Next/Last browse the already-recorded history without changing it, unlike Undo", async ({
+			page,
+		}) => {
+			await startTwoPlayerGame(page);
+			await playFirstValidMove(page);
+			await playFirstValidMove(page);
+			await expect(page.locator("#history-content .move-item")).toHaveCount(2);
+
+			await page.click("#first");
+			expect(await getScores(page)).toEqual({ black: 2, white: 2 });
+			await expect(page.locator("#history-content .move-item")).toHaveCount(2);
+
+			await page.click("#last");
+			await expect(page.locator("#history-content .move-item")).toHaveCount(2);
+		});
+
+		test("First does not trigger a stray CPU auto-move when the CPU plays first", async ({ page }) => {
+			// Regression test: goToFirst() called the full setup() to rebuild the
+			// standard opening, and setup() itself kicks off this.cpu() when the
+			// CPU has the first move - a plain "go look at the start" navigation
+			// action ended up secretly playing (and recording) an extra CPU move.
+			await startOnePlayerGame(page, "White"); // CPU plays Black, moves first
+			const moveItems = page.locator("#history-content .move-item");
+			await expect(moveItems).toHaveCount(1, { timeout: 3000 }); // CPU's opening move landed
+			const historyCountBeforeFirst = await moveItems.count();
+
+			await page.click("#first");
+			expect(await getScores(page)).toEqual({ black: 2, white: 2 });
+
+			// Give a stray scheduled CPU move (fires after ~1.5s) every chance to
+			// land before asserting nothing changed.
+			await page.waitForTimeout(2000);
+
+			await expect(moveItems).toHaveCount(historyCountBeforeFirst);
+			expect(await getScores(page)).toEqual({ black: 2, white: 2 });
 		});
 	});
 });

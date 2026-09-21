@@ -210,4 +210,23 @@ test.describe("Game sequence replay - navigation controls", () => {
 		await page.selectOption("#replayDelay", "200");
 		await page.waitForFunction(() => state.currentMoveIndex === 1, null, { timeout: 900 });
 	});
+
+	test("the navigation/playback controls fit within the viewport without needing to scroll", async ({ page }) => {
+		// Regression test: .game-active #game's content (grid + move history +
+		// the Black Advantage sparkline + the display checkboxes + this very
+		// button bar) had grown tall enough, across several feature additions,
+		// to push #navigation-btns below the fold of a normal-sized viewport -
+		// still reachable by scrolling, but no longer visible without it,
+		// which read as "the controls disappeared".
+		const { sequence } = KNOWN_SEQUENCES[0];
+		await startSequence(page, sequence);
+
+		const viewportHeight = page.viewportSize().height;
+		const rect = await page.locator("#navigation-btns").evaluate((el) => el.getBoundingClientRect());
+
+		// A few px of slack for border/font-metric rounding, not for genuine
+		// below-the-fold regressions (the bug this guards against was ~90px+).
+		expect(rect.top).toBeGreaterThanOrEqual(-2);
+		expect(rect.bottom).toBeLessThanOrEqual(viewportHeight + 10);
+	});
 });

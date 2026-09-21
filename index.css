@@ -444,10 +444,10 @@ body.light #error-message {
 
 #grid {
 	display: grid;
-	width: 80vmin;
-	height: 80vmin;
+	width: 72vmin;
+	height: 72vmin;
 	grid-template: repeat(8, 1fr) / repeat(8, 1fr);
-	margin: 40px 0 10px 0;
+	margin: 24px 0 10px 0;
 	position: relative;
 }
 
@@ -461,13 +461,13 @@ body.light #error-message {
 
 #move-history {
 	width: 200px;
-	max-height: 80vmin;
+	max-height: 72vmin;
 	overflow-y: auto;
 	background-color: #1a1a1a;
 	border: 2px solid #008000;
 	border-radius: 8px;
 	padding: 10px;
-	margin-top: 40px;
+	margin-top: 24px;
 	scroll-behavior: smooth;
 }
 
@@ -502,7 +502,7 @@ body.light #error-message {
 	justify-content: center;
 	gap: 12px;
 	margin-top: 4px;
-	padding: 8px 16px;
+	padding: 4px 16px;
 	background-color: #1a1a1a;
 	border: 2px solid #008000;
 	border-radius: 8px;
@@ -670,7 +670,7 @@ body.light .row-label {
 	top: calc(25% - 5px);
 	left: calc(25% - 5px);
 	border-radius: 50%;
-	box-shadow: 0 40vmin 0 0 #000, 40vmin 40vmin 0 0 #000, 40vmin 0 0 0 #000;
+	box-shadow: 0 36vmin 0 0 #000, 36vmin 36vmin 0 0 #000, 36vmin 0 0 0 #000;
 }
 
 @media screen and (max-aspect-ratio: 3/5) {
@@ -851,6 +851,10 @@ body.light .square.flipped {
 	cursor: default;
 }
 
+.replaying-sequence #undo {
+	display: none;
+}
+
 #grid.hide-valid-moves .valid::before {
 	opacity: 0 !important;
 }
@@ -924,7 +928,14 @@ body.light .square.flipped {
 	gap: 10px;
 	justify-content: center;
 	align-items: center;
-	margin-top: 10px;
+	margin-top: 6px;
+}
+
+/* Shown alongside Undo in every active game, not just sequence replay:
+   Undo destructively removes the last move, while these buttons only
+   navigate the already-recorded history without changing it. */
+.game-active #navigation-btns {
+	display: flex;
 }
 
 #navigation-btns .btn.nav-btn {

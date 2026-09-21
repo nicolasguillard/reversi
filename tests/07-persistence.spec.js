@@ -15,7 +15,7 @@ test.describe("Persistence across reloads", () => {
 		expect(await getScores(page)).toEqual(scoreBeforeReload);
 		await expect(page.locator("#history-content .move-item")).toHaveCount(2);
 		await expect(page.locator("#undo")).toBeVisible();
-		await expect(page.locator("#navigation-btns")).toBeHidden();
+		await expect(page.locator("#navigation-btns")).toBeVisible();
 	});
 
 	test("Stop clears the saved game, so a reload shows the setup screen again", async ({ page }) => {

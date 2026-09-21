@@ -64,6 +64,8 @@ test.describe("Game sequence validation", () => {
 
 		await expect(page.locator("body")).toHaveClass(/game-active/);
 		await expect(page.locator("#undo")).toBeVisible();
-		await expect(page.locator("#navigation-btns")).toBeHidden();
+		// Undo and the navigation bar both show in a normal game - only
+		// sequence replay hides Undo in favor of the navigation bar alone.
+		await expect(page.locator("#navigation-btns")).toBeVisible();
 	});
 });

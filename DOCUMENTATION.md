@@ -12,7 +12,7 @@ C'est l'écran affiché au lancement (sauf si une partie était en cours, voir �
 | **Light/Dark Mode** | Bascule le thème clair/sombre. Le choix est mémorisé dans `localStorage` (`theme`). |
 | **Number of Players** | `0` = le moteur joue les deux couleurs l'une contre l'autre, sans aucune intervention humaine (le champ « Disk Color » est masqué et le plateau ignore les clics). `1` = contre l'ordinateur. `2` = deux joueurs humains sur le même écran. |
 | **Disk Color** | Visible seulement en mode 1 joueur. Choix de la couleur du joueur humain (Black/White) ; l'ordinateur joue l'autre couleur. |
-| **Or replay a Game Sequence** | Champ texte pour coller une séquence de coups (ex. `D3 C4 E3 F4`) et la rejouer automatiquement au lieu de jouer une partie normale. Le format est deux caractères par coup (colonne A-H + ligne 1-8), séparés par espace/virgule/point-virgule. Le champ se reformate automatiquement quand on le quitte (`blur`). Si une séquence est fournie, le mode passe forcément à 2 joueurs et les boutons de navigation apparaissent à la place du bouton Undo. Le bouton **Clear** à côté du libellé vide le champ et retire le fond rouge d'une éventuelle tentative invalide précédente. |
+| **Or replay a Game Sequence** | Champ texte à double usage. **Séquence de coups** (ex. `D3 C4 E3 F4`) : deux caractères par coup (colonne A-H + ligne 1-8), séparés par espace/virgule/point-virgule ; rejoue automatiquement cette séquence au lieu d'une partie normale, force le mode 2 joueurs, et remplace le bouton Undo par les boutons de navigation. Le champ se reformate automatiquement quand on le quitte (`blur`). **État de plateau** : une chaîne de 64 caractères `o` (pièce noire) / `x` (pièce blanche) / `.` (case vide), lue case par case de A1 à H8 (éventuellement entourée de guillemets droits, ex. `"..."`, comme un `JSON.stringify` collé tel quel) ; place directement ce plateau au démarrage, **sans historique**, en déduisant le joueur à qui c'est le tour (Noir s'il a un coup légal, sinon Blanc, sinon la partie est déjà terminée) — respecte alors le nombre de joueurs/la couleur choisis, comme un simple point de départ alternatif (pas un mode 2 joueurs forcé). Le bouton **Clear** à côté du libellé vide le champ et retire le fond rouge d'une éventuelle tentative invalide précédente. |
 | **Start!** | Valide la séquence (s'il y en a une) puis lance la partie. Si la séquence contient un coup invalide, une modale d'erreur s'affiche avec le numéro du coup fautif et le champ est surligné en rouge. |
 
 ## 2. Écran de jeu (`#game`)
@@ -21,7 +21,7 @@ C'est l'écran affiché au lancement (sauf si une partie était en cours, voir �
 - **Score Noir / Blanc** : nombre de jetons de chaque couleur, mis à jour à chaque coup.
 - **× Stop** : quitte la partie en cours et revient à l'écran de configuration.
 - **Tour actuel** (`#turn`) : indique qui doit jouer (« Black's Turn » / « White's Turn »), ou le résultat final en fin de partie.
-- **↺ Undo** : annule le dernier coup. En mode 1 joueur, annule aussi le coup de l'ordinateur pour revenir au tour du joueur humain. Masqué pendant la lecture d'une séquence (remplacé par les boutons de navigation, voir §2.4).
+- **↺ Undo** : annule (supprime définitivement) le dernier coup. En mode 1 joueur, annule aussi le coup de l'ordinateur pour revenir au tour du joueur humain. Masqué pendant la lecture d'une séquence (la barre de navigation, voir §2.5, suffit alors — il n'y a pas de coup « en direct » à annuler).
 
 ### 2.2 Plateau (`#grid`)
 Grille 8×8 avec étiquettes de colonnes (A-H) et de lignes (1-8). Chaque case peut afficher, selon les cases à cocher actives :
@@ -37,6 +37,8 @@ Liste les coups joués, une ligne par tour (coup Noir + coup Blanc). Un coup pas
 
 Sous la liste, le bouton **Copy sequence** copie dans le presse-papiers la séquence des coups réellement joués, dans le même format que celui accepté par le champ « Or replay a Game Sequence » de l'écran de configuration (ex. `D3 C4 E3 F4`) — les coups passés (Z0) sont omis, car ce champ n'a pas de notation pour eux ; ils sont de toute façon réinsérés automatiquement au bon moment si la séquence copiée est rejouée. Désactivé tant qu'aucun coup n'a été joué ; affiche brièvement « Copied! » après un clic.
 
+Ce panneau entier est masqué si la partie a démarré depuis un **état de plateau** collé dans le champ séquence et que personne n'a de coup légal depuis cette position (partie déjà terminée dès le départ) — il n'y a alors aucun historique à afficher ni à construire. Il redevient visible dès qu'une partie normale (ou une séquence de coups) est démarrée.
+
 ### 2.4 Avantage Noir (`#advantage-container`)
 Mini-graphique en barres (sparkline, librairie jquery.sparkline) entre le plateau et les cases à cocher. Un point par position jouée jusqu'au coup actuellement affiché (plus un point initial à 0 pour le début de partie) : valeur = nombre de jetons noirs moins nombre de jetons blancs à ce moment-là.
 - Barre verte vers le haut : avantage matériel à Noir. Barre rouge vers le bas : avantage à Blanc.
@@ -44,7 +46,7 @@ Mini-graphique en barres (sparkline, librairie jquery.sparkline) entre le platea
 - Une infobulle au survol de chaque barre précise le numéro du coup, l'avantage exact (signé, ex. `+3`) et le nombre de jetons de chaque couleur à ce moment-là.
 
 ### 2.5 Barre de navigation (`#navigation-btns`)
-Visible uniquement pendant la lecture d'une séquence de coups. Permet de parcourir l'historique :
+Visible dans toutes les parties (partie normale, état de plateau chargé, ou séquence rejouée) — pas seulement pendant la lecture d'une séquence. Contrairement à Undo, qui supprime définitivement le dernier coup, ces boutons se contentent de parcourir l'historique déjà enregistré sans le modifier ; les deux coexistent donc en dehors du mode séquence (où il n'y a de toute façon rien à annuler, voir §2.1). Permet de parcourir l'historique :
 - **⏮ First** : retour à l'état initial du plateau.
 - **▶ Play / ⏸ Pause** : lance ou met en pause la lecture automatique des coups restants (au rythme choisi dans le menu déroulant de délai, voir ci-dessous).
 - **◀◀ Previous / ▶▶ Next** : recule/avance d'un coup.

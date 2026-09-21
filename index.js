@@ -174,9 +174,16 @@ function initGrid() {
 	document.getElementById("play").addEventListener("click", () => {
 		let sequence = document.getElementById("gameSequence").value.trim();
 		let gameSequenceField = document.getElementById("gameSequence");
-		
-		// Valider la séquence si elle est fournie
-		if (sequence) {
+		let boardState = parseBoardState(sequence);
+		let isMoveSequence = !!sequence && !boardState;
+
+		if (boardState) {
+			// Effacer un éventuel fond rouge laissé par une tentative précédente
+			gameSequenceField.style.backgroundColor = "";
+		}
+
+		// Valider la séquence si elle est fournie et que ce n'est pas un état de plateau
+		if (isMoveSequence) {
 			let moves = sequence.toUpperCase()
 				.replace(/[,;]/g, ' ')
 				.split(/\s+/)
@@ -231,8 +238,11 @@ function initGrid() {
 			document.body.classList.add("game-active");
 			document.body.classList.remove("fade");
 			let cpu;
-			// Si une séquence est fournie, forcer le mode deux joueurs
-			if (sequence || playerNumber.value === "2") {
+			// Une séquence de coups force le mode deux joueurs. Un état de
+			// plateau collé, lui, se joue en partie normale : il respecte le
+			// nombre de joueurs/la couleur choisis, comme un simple point de
+			// départ alternatif à la position standard.
+			if (isMoveSequence || playerNumber.value === "2") {
 				cpu = 0;
 			} else if (playerNumber.value === "0") {
 				// 0 joueur : le moteur joue les deux couleurs, l'une contre l'autre
@@ -240,22 +250,18 @@ function initGrid() {
 			} else {
 				cpu = playerId.value === "1" ? 1 : 2;
 			}
-			logic.setup(cpu);
-			if (sequence) {
+			logic.setup(cpu, boardState);
+			if (isMoveSequence) {
 				currentSequence = sequence;
 				isReplayingSequence = true;
 				document.body.classList.add("replaying-sequence");
-				document.getElementById("undo").style.display = "none";
-				document.getElementById("navigation-btns").style.display = "flex";
 				document.getElementById("play-replay").style.display = "inline-block";
 				document.getElementById("pause-replay").style.display = "none";
-				
+
 				// Préparer la séquence (déjà validée)
 				logic.prepareSequence(sequence);
 			} else {
 				isReplayingSequence = false;
-				document.getElementById("undo").style.display = "inline-block";
-				document.getElementById("navigation-btns").style.display = "none";
 			}
 		}, 500);
 	});
@@ -263,8 +269,6 @@ function initGrid() {
 		isReplayingSequence = false;
 		clearTimeout(cpuMoveTimeout);
 		document.body.classList.remove("replaying-sequence");
-		document.getElementById("undo").style.display = "inline-block";
-		document.getElementById("navigation-btns").style.display = "none";
 		document.body.classList.add("fade");
 		setTimeout(() => {
 			document.body.classList.add("setup-active");
@@ -527,6 +531,34 @@ function buildSequenceString() {
 	return parts.join(" ");
 }
 
+// Tente d'interpréter value comme un état de plateau plutôt qu'une séquence
+// de coups : une chaîne de 64 caractères "o" (pièce noire), "x" (pièce
+// blanche) ou "." (case vide), lue ligne par ligne de A1 à H8 (même ordre
+// que l'indice de case affiché par "Show square indices"), éventuellement
+// entourée de guillemets droits (ex. copiée depuis un JSON.stringify).
+// Renvoie { grid, turn } si le format correspond, sinon null. "turn" est
+// déduit : Noir s'il a au moins un coup légal, sinon Blanc s'il en a un,
+// sinon Noir par défaut (aucun coup possible pour personne - la partie est
+// déjà terminée, la couleur du tour n'a alors plus d'importance).
+function parseBoardState(value) {
+	let trimmed = value.trim().replace(/^"+/, "").replace(/"+$/, "");
+	if (!/^[ox.]{64}$/i.test(trimmed)) {
+		return null;
+	}
+	let grid = ReversiEngine.createEmptyGrid();
+	for (let k = 0; k < 64; k++) {
+		let i = Math.floor(k / 8);
+		let j = k % 8;
+		let ch = trimmed[k].toLowerCase();
+		grid[i][j] = ch === "o" ? 1 : ch === "x" ? 2 : 0;
+	}
+	let turn = 1;
+	if (Object.keys(ReversiEngine.getValidMoves(grid, 1)).length === 0) {
+		turn = Object.keys(ReversiEngine.getValidMoves(grid, 2)).length > 0 ? 2 : 1;
+	}
+	return { grid, turn };
+}
+
 // Calcule puis dessine le sparkline "Black Advantage" : un point par position
 // jouée jusqu'à state.currentMoveIndex (inclus), valeur = nb jetons noirs -
 // nb jetons blancs à ce moment-là (positif = avantage Noir, négatif = Blanc).
@@ -601,7 +633,11 @@ function scrollToCurrentMove() {
 }
 
 let logic = {
-	setup(cpu = 0) {
+	// initialBoard (optionnel) : { grid, turn } renvoyé par parseBoardState(),
+	// pour démarrer directement sur un état de plateau collé dans le champ
+	// séquence plutôt que sur la position de départ standard. Dans ce cas,
+	// state.moves reste vide (aucun historique connu pour y arriver).
+	setup(cpu = 0, initialBoard = null) {
 		state = {
 			grid: ReversiEngine.createEmptyGrid(),
 			moves: [],
@@ -610,12 +646,17 @@ let logic = {
 				i: -1,
 				j: -1,
 			},
-			turn: 1,
+			turn: initialBoard ? initialBoard.turn : 1,
 			validMoves: {},
 			p1: 0,
 			p2: 0,
 			cpu: cpu,
 			currentMoveIndex: -1,
+			// Conservé (et donc persisté dans lastGame) uniquement pour que
+			// goToFirst() puisse revenir à la vraie position de départ d'une
+			// partie chargée depuis un état de plateau, plutôt qu'à
+			// l'ouverture standard à 4 jetons.
+			initialBoard: initialBoard,
 		};
 		// Nettoyer tous les indicateurs de dernier coup, les numéros et le
 		// surlignage des jetons retournés d'une éventuelle partie précédente
@@ -632,19 +673,40 @@ let logic = {
 				squares[row][col].classList.remove('flipped');
 			}
 		}
-		this.setSquare(3, 3, 2);
-		this.setSquare(3, 4, 1);
-		this.setSquare(4, 3, 1);
-		this.setSquare(4, 4, 2);
+		if (initialBoard) {
+			for (let i = 0; i < 8; i++) {
+				for (let j = 0; j < 8; j++) {
+					if (initialBoard.grid[i][j] !== 0) {
+						this.setSquare(i, j, initialBoard.grid[i][j]);
+					}
+				}
+			}
+		} else {
+			this.setSquare(3, 3, 2);
+			this.setSquare(3, 4, 1);
+			this.setSquare(4, 3, 1);
+			this.setSquare(4, 4, 2);
+		}
 		checkdom();
-		this.validMoves();
-		turnDiv.innerText = "Black's Turn";
+		let hasValidMoves = this.validMoves();
+		// validMoves() a déjà positionné le texte de fin de partie (via
+		// setEndgameText()) si la position de départ est immédiatement
+		// terminale (ex. état de plateau chargé sans coup possible pour
+		// personne) - ne pas l'écraser dans ce cas précis.
+		if (hasValidMoves) {
+			turnDiv.innerText = state.turn === 1 ? "Black's Turn" : "White's Turn";
+		}
 		grid.classList.add("turn-" + (state.turn === 1 ? "Black" : "White"));
 		grid.classList.remove("turn-" + (state.turn === 2 ? "Black" : "White"));
 		// Réaligner les classes d'affichage (numéros de coups, etc.) sur l'état des cases à cocher
 		syncBoardDisplayToggles();
 		this.updateNavigationButtons();
 		updateMoveHistory();
+		// Un état de plateau chargé n'a pas d'historique : le panneau n'a de
+		// sens que s'il reste au moins un coup légal à y enregistrer. Une
+		// partie normale (ou une séquence) garde toujours le panneau visible.
+		document.getElementById("move-history").style.display =
+			initialBoard && Object.keys(state.validMoves).length === 0 ? "none" : "";
 		if (cpu === 1 || cpu === CPU_BOTH_SIDES) {
 			this.cpu();
 		}
@@ -1372,9 +1434,15 @@ let logic = {
 		replayTimeouts.forEach(timeout => clearTimeout(timeout));
 		replayTimeouts = [];
 		
-		// Sauvegarder les moves avant de réinitialiser
+		// Sauvegarder les moves et la position de départ (état de plateau
+		// chargé, ou null pour l'ouverture standard) avant de réinitialiser
 		let savedMoves = [...state.moves];
-		this.setup(state.cpu);
+		let savedInitialBoard = state.initialBoard;
+		this.setup(state.cpu, savedInitialBoard);
+		// setup() relance le CPU s'il a le trait sur cette position de départ
+		// (pertinent en mode 1 joueur/0 joueur) - on ne fait ici que naviguer
+		// vers le début, pas rejouer la partie, donc annuler ce coup programmé.
+		clearTimeout(cpuMoveTimeout);
 		state.moves = savedMoves;
 		state.currentMoveIndex = -1;
 		
@@ -1441,6 +1509,12 @@ if (localStorage.getItem("lastGame")) {
 	logic.updateMoveNumbers();
 	logic.updateLastMoveIndicator();
 	updateMoveHistory();
+	// Même règle de visibilité que dans setup() pour un état de plateau chargé
+	// sans coup possible : moves.length === 0 combiné à aucun coup valide ne
+	// peut arriver qu'à un tel état (une partie normale a toujours au moins
+	// un coup valide à son tout début).
+	document.getElementById("move-history").style.display =
+		state.moves.length === 0 && Object.keys(state.validMoves).length === 0 ? "none" : "";
 	document.body.classList.add("game-active");
 } else {
 	document.body.classList.add("setup-active");
