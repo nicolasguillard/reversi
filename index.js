@@ -57,6 +57,7 @@ let state = {
 	grid: [],
 	moves: [],
 	isPaused: false,
+	gameOver: false,
 	focused: {
 		i: -1,
 		j: -1,
@@ -642,6 +643,7 @@ let logic = {
 			grid: ReversiEngine.createEmptyGrid(),
 			moves: [],
 			isPaused: false,
+			gameOver: false,
 			focused: {
 				i: -1,
 				j: -1,
@@ -710,6 +712,18 @@ let logic = {
 		if (cpu === 1 || cpu === CPU_BOTH_SIDES) {
 			this.cpu();
 		}
+		if (cpu === CPU_BOTH_SIDES) {
+			// Partie à 0 joueur : le moteur joue seul en continu dès le départ,
+			// donc le bouton affiche "pause" (cliquer suspend la partie en cours),
+			// symétriquement à un lecteur média qui montre ⏸ pendant la lecture.
+			document.getElementById("play-replay").style.display = "none";
+			document.getElementById("pause-replay").style.display = "inline-block";
+		}
+		// Le délai ne pilote que la lecture d'un historique déjà enregistré
+		// (replaySequence()/scheduleNextReplayStep()) : sans effet sur le rythme
+		// (fixe, 1.5s) de la partie à 0 joueur auto-jouée en direct, donc inactif
+		// dans ce mode pour ne pas laisser croire qu'il la régirait.
+		document.getElementById("replayDelay").disabled = cpu === CPU_BOTH_SIDES;
 	},
 	clickHandler(i, j) {
 		this.inputHandler(i, j);
@@ -824,6 +838,9 @@ let logic = {
 	},
 	endgame() {
 		this.setEndgameText();
+		state.gameOver = true;
+		clearTimeout(cpuMoveTimeout);
+		this.updateNavigationButtons();
 		// Ne pas afficher le modal victory si une séquence est rejouée
 		if (!isReplayingSequence) {
 			showModal(victory);
@@ -942,6 +959,10 @@ let logic = {
 	},
 	cpu() {
 		if (Object.keys(state.validMoves).length === 0) return;
+		// Partie à 0 joueur mise en pause par l'utilisateur (bouton play/pause) :
+		// ne rien programmer tant qu'elle n'est pas relancée via playReplay(),
+		// même si ce point est atteint depuis switchTurn() ou undo().
+		if (state.cpu === CPU_BOTH_SIDES && state.isPaused) return;
 		clearTimeout(cpuMoveTimeout);
 		cpuMoveTimeout = setTimeout(() => {
 			let move;
@@ -1117,28 +1138,40 @@ let logic = {
 		let prevBtn = document.getElementById("previous");
 		let nextBtn = document.getElementById("next");
 		let playReplayBtn = document.getElementById("play-replay");
+		let pauseReplayBtn = document.getElementById("pause-replay");
 		let lastBtn = document.getElementById("last");
-		
+
 		// Désactiver pendant le tour du CPU
 		let isCpuTurn = state.cpu !== 0 && (state.cpu === state.turn || state.cpu === CPU_BOTH_SIDES);
-		
+
 		// Vérifier si on est à la fin de l'historique
 		let isAtEnd = state.currentMoveIndex >= state.moves.length - 1;
-		
+
 		// Vérifier si on est au début de l'historique
 		let isAtStart = state.currentMoveIndex < 0;
-		
+
 		// First: désactivé si au début de l'historique ou tour CPU
 		if (firstBtn) firstBtn.disabled = isAtStart || isCpuTurn;
-		
+
 		// Previous: désactivé si au début de l'historique ou tour CPU
 		prevBtn.disabled = isAtStart || isCpuTurn;
-		
+
 		// Next: désactivé si à la fin de l'historique ou tour CPU
 		nextBtn.disabled = isAtEnd || isCpuTurn;
-		
-		// Play-replay et Last: désactivés si à la fin de l'historique ou tour CPU
-		if (playReplayBtn) playReplayBtn.disabled = isAtEnd || isCpuTurn;
+
+		if (state.cpu === CPU_BOTH_SIDES) {
+			// Partie à 0 joueur : play-replay/pause-replay pilotent la mise en
+			// pause de la partie auto-jouée en direct (pas une lecture
+			// d'historique déjà enregistré) - actifs tant que la partie dure,
+			// quel que soit le tour, inactifs seulement une fois terminée.
+			if (playReplayBtn) playReplayBtn.disabled = state.gameOver;
+			if (pauseReplayBtn) pauseReplayBtn.disabled = state.gameOver;
+		} else {
+			// Play-replay: désactivé si à la fin de l'historique ou tour CPU
+			if (playReplayBtn) playReplayBtn.disabled = isAtEnd || isCpuTurn;
+		}
+
+		// Last: désactivé si à la fin de l'historique ou tour CPU
 		if (lastBtn) lastBtn.disabled = isAtEnd || isCpuTurn;
 	},
 	navigateToMove(moveIndex) {
@@ -1223,6 +1256,17 @@ let logic = {
 		replayTimeouts.push(finalTimeout);
 	},
 	pauseReplay() {
+		if (state.cpu === CPU_BOTH_SIDES) {
+			// Partie à 0 joueur : suspendre la partie auto-jouée en direct
+			// plutôt qu'une lecture d'historique déjà enregistré.
+			state.isPaused = true;
+			clearTimeout(cpuMoveTimeout);
+			document.getElementById("play-replay").style.display = "inline-block";
+			document.getElementById("pause-replay").style.display = "none";
+			localStorage.setItem("lastGame", JSON.stringify(state));
+			this.updateNavigationButtons();
+			return;
+		}
 		isPaused = true;
 		replayTimeouts.forEach(timeout => clearTimeout(timeout));
 		replayTimeouts = [];
@@ -1231,6 +1275,18 @@ let logic = {
 		this.updateNavigationButtons();
 	},
 	playReplay() {
+		if (state.cpu === CPU_BOTH_SIDES) {
+			// Partie à 0 joueur : relancer la partie auto-jouée en direct
+			// plutôt qu'une lecture d'historique déjà enregistré.
+			if (state.gameOver) return;
+			state.isPaused = false;
+			document.getElementById("play-replay").style.display = "none";
+			document.getElementById("pause-replay").style.display = "inline-block";
+			localStorage.setItem("lastGame", JSON.stringify(state));
+			this.updateNavigationButtons();
+			this.cpu();
+			return;
+		}
 		// Rejouer la séquence depuis l'état actuel
 		let remainingCount = state.moves.length - state.currentMoveIndex - 1;
 		if (remainingCount <= 0) return;
@@ -1515,6 +1571,14 @@ if (localStorage.getItem("lastGame")) {
 	// un coup valide à son tout début).
 	document.getElementById("move-history").style.display =
 		state.moves.length === 0 && Object.keys(state.validMoves).length === 0 ? "none" : "";
+	if (state.cpu === CPU_BOTH_SIDES) {
+		// Refléter l'état de pause restauré (une partie terminée n'atteint
+		// jamais ce point : endgame() a déjà purgé "lastGame" du localStorage).
+		document.getElementById("play-replay").style.display = state.isPaused ? "inline-block" : "none";
+		document.getElementById("pause-replay").style.display = state.isPaused ? "none" : "inline-block";
+	}
+	document.getElementById("replayDelay").disabled = state.cpu === CPU_BOTH_SIDES;
+	logic.updateNavigationButtons();
 	document.body.classList.add("game-active");
 } else {
 	document.body.classList.add("setup-active");

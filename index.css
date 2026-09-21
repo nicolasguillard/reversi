@@ -1048,8 +1048,10 @@ body.light .square.flipped {
 #previous:disabled,
 #next:disabled,
 #play-replay:disabled,
+#pause-replay:disabled,
 #last:disabled,
-#copySequence:disabled {
+#copySequence:disabled,
+#replayDelay:disabled {
 	opacity: 0.5;
 	cursor: not-allowed;
 	box-shadow: none;
