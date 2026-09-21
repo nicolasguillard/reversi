@@ -89,9 +89,9 @@ test.describe("Board display checkboxes", () => {
 		expect(zIndices.squareIndex).toBeLessThan(zIndices.modal);
 	});
 
-	test("showMonoMoveIndices switches the move-history numbering scheme", async ({ page }) => {
+	test("showMoveIndices switches the move-history numbering scheme", async ({ page }) => {
 		await startTwoPlayerGame(page);
-		await expect(page.locator("#showMonoMoveIndices")).not.toBeChecked();
+		await expect(page.locator("#showMoveIndices")).not.toBeChecked();
 
 		await playFirstValidMove(page); // move 1 (line 1, Black)
 		await playFirstValidMove(page); // move 2 (line 1, White)
@@ -102,7 +102,7 @@ test.describe("Board display checkboxes", () => {
 		await expect(moveNumbers.nth(0)).toHaveText("1.");
 		await expect(moveNumbers.nth(1)).toHaveText("2.");
 
-		await page.check("#showMonoMoveIndices");
+		await page.check("#showMoveIndices");
 		await expect(moveNumbers.nth(0)).toHaveText("1.");
 		await expect(moveNumbers.nth(1)).toHaveText("3.");
 	});

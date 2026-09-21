@@ -334,7 +334,7 @@ function initGrid() {
 			grid.classList.remove("show-square-indices");
 		}
 	});
-	document.getElementById("showMonoMoveIndices").addEventListener("change", (e) => {
+	document.getElementById("showMoveIndices").addEventListener("change", (e) => {
 		updateMoveHistory();
 	});
 	document.getElementById("showFlippedBackground").addEventListener("change", (e) => {
@@ -450,7 +450,7 @@ function updateMoveHistory() {
 	historyContent.innerHTML = "";
 	
 	let alphabets = ["A", "B", "C", "D", "E", "F", "G", "H"];
-	let showMonoMoveIndices = document.getElementById("showMonoMoveIndices").checked;
+	let showMoveIndices = document.getElementById("showMoveIndices").checked;
 
 	// Parcourir l'historique des coups par paires
 	for (let i = 0; i < state.moves.length; i += 2) {
@@ -460,7 +460,7 @@ function updateMoveHistory() {
 		// Numéro du coup (commence à 1)
 		let moveNum = document.createElement("span");
 		moveNum.classList.add("move-number");
-		if (showMonoMoveIndices) {
+		if (showMoveIndices) {
 			// Afficher le numéro du coup noir (1, 3, 5, 7...)
 			moveNum.textContent = (i + 1) + ".";
 		} else {

@@ -47,7 +47,7 @@ The same textarea also accepts a **board-state** string instead of a move sequen
 
 ### Board display toggles are cosmetic only
 
-The six checkboxes in `.show-checkboxes-container` (`showValidMoves`, `showLastMove`, `showMoveNumbers`, `showSquareIndices`, `showMonoMoveIndices`, `showFlippedBackground`) only add/remove CSS classes on `#grid` or toggle DOM indicator elements — none of them affect `state` or game rules. `showLastMove` and `showMoveNumbers` interact: when move numbers are shown, "last move" highlighting is applied to the move-number element itself (class `last-move-number`) instead of drawing a separate dot indicator. See `DOCUMENTATION.md` for the full behavior spec of each toggle (in French).
+The six checkboxes in `.show-checkboxes-container` (`showValidMoves`, `showLastMove`, `showMoveNumbers`, `showSquareIndices`, `showMoveIndices`, `showFlippedBackground`) only add/remove CSS classes on `#grid` or toggle DOM indicator elements — none of them affect `state` or game rules. `showLastMove` and `showMoveNumbers` interact: when move numbers are shown, "last move" highlighting is applied to the move-number element itself (class `last-move-number`) instead of drawing a separate dot indicator. See `DOCUMENTATION.md` for the full behavior spec of each toggle (in French).
 
 ### Black Advantage sparkline
 

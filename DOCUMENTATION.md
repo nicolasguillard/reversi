@@ -84,7 +84,7 @@ Affiche dans un coin de chaque case un indice numérique de 1 à 64 (numérotati
 - Utile pour identifier une case par son numéro plutôt que par sa coordonnée (colonne/ligne), par exemple en référence à une notation externe.
 - N'a pas d'impact sur les autres indicateurs (dernier coup, numéro de coup) : ils peuvent tous être affichés simultanément.
 
-### ☐ Show mono move indices (`showMonoMoveIndices`)
+### ☐ Show mono move indices (`showMoveIndices`)
 Change la numérotation utilisée dans **l'historique des coups** (panneau latéral), pas sur le plateau.
 - Décochée par défaut : chaque ligne de l'historique est numérotée par tour (1., 2., 3.…, un tour = un coup Noir + un coup Blanc).
 - Cochée : chaque ligne est numérotée par le rang du coup Noir de la paire (1., 3., 5., 7.…), ce qui correspond à la numérotation globale des coups plutôt qu'au numéro de tour.
