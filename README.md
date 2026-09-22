@@ -1,5 +1,7 @@
 # Reversi
 
+This project is a fork of https://github.com/lazy-guy/reversi.
+
 ## [FR] Evolutions
 Ce projet répond à deux motivations : 
 1. le besoin de disposer d'un outil permettant de visualiser des parties (série de coups ou juste un état) et d'intergir avec, dans le cadre d'un travail de reproduction de recherches concernant `Othello-GPT`;
@@ -41,6 +43,7 @@ Compared with the [initial project](https://github.com/lazy-guy/reversi) which w
 
 ---
 ---
+
 ## Previous version
 
 A simple reversi game written in JavaScript.
