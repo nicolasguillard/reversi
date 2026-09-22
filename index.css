@@ -29,6 +29,7 @@ body.light {
 #setup,
 #game {
 	display: none;
+	padding: 5px;
 }
 
 .setup-active #setup {
